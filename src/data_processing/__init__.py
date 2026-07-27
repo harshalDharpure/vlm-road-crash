@@ -1,7 +1,5 @@
-"""Data processing modules."""
-from .video_processor import VideoProcessor
-from .ground_truth_parser import GroundTruthParser
-from .dataset_splitter import DatasetSplitter
-
-__all__ = ['VideoProcessor', 'GroundTruthParser', 'DatasetSplitter']
-
+from src.data_processing.video_processor import VideoProcessor
+from src.data_processing.ground_truth_parser import GroundTruthParser, extract_video_id
+from src.data_processing.dataset_splitter import DatasetSplitter
+from src.data_processing.frame_sampler import FrameSampler, SAMPLING_STRATEGIES
+from src.data_processing.video_validator import VideoValidator

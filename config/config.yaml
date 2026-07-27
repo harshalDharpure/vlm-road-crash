@@ -1,80 +1,141 @@
-# Configuration file for Car Crash Video Summarization Project
+# Publication-ready configuration for Crash-1500 VLM summarization
+# Project: Efficient Vision-Language Video Summarization for Road Crash Analysis
 
-# Dataset Configuration
+project:
+  name: "crash-vlm-summarization"
+  title: "Efficient Vision-Language Video Summarization for Road Crash Analysis"
+  seed: 42
+
 dataset:
-  root_dir: "/home/vaneet_2221cs15/vlmvideos/Vaneet_mam_vlm"
-  videos_dir: "videos"
-  ground_truth_file: "Car_Crash_Text_Dataset (3).xlsx"
+  root_dir: "/DATA/vaneet_2221cs15/vlm-road-crash"
+  videos_dir: "video1500"
+  ground_truth_file: "Car_Crash_Text_Dataset_ground_truth.xlsx"
   processed_dir: "data/processed"
-  
-  # Video Processing
-  segment_duration: 5  # seconds
-  frame_interval: 5    # every 5th frame
-  fps: 10              # assumed frame rate
-  
-  # Dataset Split
+  segment_duration: 5
+  fps: 30
+  frame_resize: [336, 336]
   train_ratio: 0.70
   val_ratio: 0.15
   test_ratio: 0.15
   random_seed: 42
+  # Sparse temporal sampling strategies (frame stride)
+  sampling_strategies:
+    - name: dense
+      frame_interval: 1
+    - name: every_3rd
+      frame_interval: 3
+    - name: every_5th
+      frame_interval: 5
+    - name: every_10th
+      frame_interval: 10
+  default_sampling: every_5th
+  num_workers: 8
 
-# Model Configuration
+prompts:
+  default_strategy: faithfulness
+  strategies:
+    - basic_caption
+    - temporal_sequence
+    - safety_critical
+    - chain_of_thought
+    - structured_event
+
 model:
-  name: "llava-next"
+  primary: llava-next
+  name: llava-next
   vision_model: "llava-hf/llava-v1.6-mistral-7b-hf"
-  language_model: "llava-hf/llava-v1.6-mistral-7b-hf"  
-  device: "cuda"
-  batch_size: 4
-  max_frames: 30  # For 5-second videos with every 5th frame
+  device: cuda
+  batch_size: 1
+  max_frames: 30
+  quantization: 8bit
+  max_new_tokens: 256
+  repetition_penalty: 1.15
+  no_repeat_ngram_size: 3
 
-# Training Configuration
+baselines:
+  enabled:
+    - llava-next
+  api_baselines:
+    gpt4v:
+      enabled: false
+      max_samples: 50
+    gemini:
+      enabled: false
+      max_samples: 50
+
 training:
-  num_epochs: 5
-  learning_rate: 5e-6  # Very conservative learning rate to prevent NaN losses
+  num_epochs: 2
+  learning_rate: 5.0e-6
   weight_decay: 0.01
   warmup_steps: 100
-  save_dir: "results/checkpoints"
-  log_dir: "results/logs"
-  save_every: 1  # Save checkpoint every N epochs
-  max_grad_norm: 0.3  # Very tight gradient clipping for stability
-  
-  # Loss tracking
+  save_dir: results/checkpoints
+  log_dir: results/logs
+  save_every: 1
+  max_grad_norm: 0.5
+  early_stopping_patience: 1
+  use_collage: false
+  num_key_frames: 1
+  prompt_strategy: faithfulness
+  lora_ranks: [4, 8, 16, 32]
+  learning_rates: [1.0e-5, 2.0e-5, 5.0e-5]
+  default_lora_rank: 8
+  default_lora_alpha: 16
   track_loss: true
-  loss_file: "results/training_loss.json"
-  val_loss_file: "results/validation_loss.json"
+  loss_file: results/training_loss.json
+  val_loss_file: results/validation_loss.json
+  use_wandb: false
+  gradient_checkpointing: true
 
-# Evaluation Configuration
 evaluation:
-  # Zero-shot evaluation
   zero_shot: true
-  pretrained_model_path: null  # Will use pretrained if null
-  
-  # Metrics
   metrics:
-    - "bleu"
-    - "nli"
-  
-  # BLEU Configuration
+    - bleu
+    - rouge
+    - meteor
+    - bertscore
+    - cider
+    - spice
+    - nli
   bleu:
     max_order: 4
     smooth: true
-  
-  # NLI Configuration
   nli:
-    model_name: "roberta-large-mnli"
-    batch_size: 16
-    device: "cuda"
+    model_name: roberta-large-mnli
+    batch_size: 8
+    device: cpu
+  bertscore_device: cpu
 
-# Temporal Prompts Configuration
-temporal_prompts:
-  format: "zero_padded"  # "00", "05", "10", etc.
-  max_frames: 30
+ablation:
+  frame_strategies: [dense, every_3rd, every_5th, every_10th]
+  prompt_strategies: [basic_caption, temporal_sequence, safety_critical, chain_of_thought, structured_event]
+  lora_ranks: [4, 8, 16, 32]
+  dataset_fractions: [0.25, 0.5, 1.0]
+  frame_counts: [5, 10, 15, 30]
 
-# Paths
 paths:
-  data: "data"
-  results: "results"
-  checkpoints: "results/checkpoints"
-  metrics: "results/metrics"
-  logs: "results/logs"
+  data: data
+  results: results
+  checkpoints: results/checkpoints
+  zero_shot: results/zero_shot
+  finetuned: results/finetuned
+  metrics: results/metrics
+  logs: results/logs
+  publication_figures: results/publication_figures
+  latex_tables: results/latex_tables
+  qualitative_examples: results/qualitative_examples
+  statistical_analysis: results/statistical_analysis
+  runtime_analysis: results/runtime_analysis
+  human_eval: results/human_eval
+  ablation: results/ablation
 
+gpu:
+  auto_select: true
+  min_free_gb: 8
+  retry_on_oom: true
+  max_retries: 3
+  log_vram: true
+
+experiment:
+  pilot_samples: 25
+  full_eval: true
+  resume: true

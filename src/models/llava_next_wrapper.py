@@ -4,16 +4,19 @@ Supports automatic fallback + correct APIs for both.
 """
 
 import torch
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from PIL import Image
 import numpy as np
+
+from src.models.frame_utils import frames_to_collage, collage_temporal_prompt_suffix
 
 
 class LLaVANeXTWrapper:
     def __init__(self, model_name: str = "llava-hf/llava-v1.6-mistral-7b-hf",
-                 device: str = "cuda"):
+                 device: str = "cuda", config: Optional[Dict[str, Any]] = None):
         self.model_name = model_name
         self.device = device
+        self.config = config or {}
         self.model = None
         self.processor = None
         self.is_next = False
@@ -172,15 +175,23 @@ class LLaVANeXTWrapper:
         return {k: v.to(self.device) for k, v in inputs.items()}
 
     # ------------------------------------------------------------------
-    def generate_caption(self, frames: List[np.ndarray],
-                         prompt: str) -> str:
+    def generate_caption(
+        self,
+        frames: List[np.ndarray],
+        prompt: str,
+        use_collage: bool = True,
+        num_key_frames: int = 4,
+    ) -> str:
 
         if len(frames) == 0:
             raise ValueError("No frames provided")
 
-        # Use middle frame (for now)
-        rep = frames[len(frames) // 2]
-        rep_img = Image.fromarray(rep).convert("RGB")
+        if use_collage and len(frames) > 1:
+            rep_img = frames_to_collage(frames, max_frames=num_key_frames)
+            prompt = prompt + collage_temporal_prompt_suffix(min(num_key_frames, len(frames)))
+        else:
+            rep = frames[len(frames) // 2]
+            rep_img = Image.fromarray(rep).convert("RGB")
 
         formatted_prompt = f"USER: <image>\n{prompt}\nASSISTANT:"
 
@@ -207,10 +218,16 @@ class LLaVANeXTWrapper:
             inputs["image_sizes"] = torch.tensor([[h, w]], device=self.device)
 
         with torch.no_grad():
+            gen_cfg = self.config.get("model", {})
+            max_new = gen_cfg.get("max_new_tokens", 256)
+            rep_pen = gen_cfg.get("repetition_penalty", 1.15)
+            ngram = gen_cfg.get("no_repeat_ngram_size", 3)
             outputs = self.model.generate(
                 **inputs,
-                max_new_tokens=512,
-                do_sample=False
+                max_new_tokens=max_new,
+                do_sample=False,
+                repetition_penalty=rep_pen,
+                no_repeat_ngram_size=ngram,
             )
 
         text = self.processor.decode(outputs[0], skip_special_tokens=True)

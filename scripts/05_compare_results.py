@@ -121,7 +121,7 @@ def main():
     parser.add_argument(
         "--finetuned_metrics",
         type=str,
-        required=True,
+        default="results/finetuned/best_checkpoint/metrics.json",
         help="Path to fine-tuned metrics JSON file"
     )
     parser.add_argument(

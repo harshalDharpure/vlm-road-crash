@@ -1,150 +1,184 @@
-"""Parse ground truth annotations from Excel file."""
-import pandas as pd
+"""Parse full ground-truth annotations from Crash-1500 Excel file."""
+from __future__ import annotations
+
 import json
-from pathlib import Path
-from typing import Dict, List
 import re
+from datetime import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import pandas as pd
+
+
+def _format_time(value: Any) -> Optional[str]:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return None
+    if isinstance(value, time):
+        return value.strftime("%H:%M:%S")
+    return str(value).strip() or None
+
+
+def _safe_str(value: Any) -> str:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return ""
+    return str(value).strip()
+
+
+def extract_video_id(raw: Any) -> str:
+    text = str(raw).strip()
+    match = re.search(r"(\d+)", text)
+    if match:
+        return match.group(1).zfill(6)
+    return text
 
 
 class GroundTruthParser:
-    """Parse ground truth text summaries from Excel file."""
-    
+    """Parse all 11 Crash-1500 annotation attributes."""
+
+    ATTRIBUTE_COLUMNS = [
+        "Video Number",
+        "Severity of the Crash",
+        "Type of Vehicles involved",
+        "No. of Vehicles involved",
+        "Location of impact",
+        "Start of Crash",
+        "End of Crash",
+        "Explanation",
+        "Ambiguity",
+        "Camera View",
+        "Weather Conditions",
+    ]
+
     def __init__(self, excel_path: str):
         self.excel_path = Path(excel_path)
         if not self.excel_path.exists():
             raise FileNotFoundError(f"Excel file not found: {excel_path}")
-        
-        self.df = None
-        self.annotations = {}
-    
+        self.df: Optional[pd.DataFrame] = None
+        self.annotations: Dict[str, Dict[str, Any]] = {}
+
     def load_excel(self) -> pd.DataFrame:
-        """Load Excel file into DataFrame."""
-        try:
-            self.df = pd.read_excel(self.excel_path)
-            return self.df
-        except Exception as e:
-            raise ValueError(f"Error loading Excel file: {e}")
-    
-    def extract_video_id(self, filename: str) -> str:
-        """Extract normalized numeric video ID."""
-        video_id = Path(filename).stem
-        match = re.search(r"(\d+)", video_id)
-        if match:
-            return match.group(1).zfill(6)
-        return video_id
-    
-    def map_videos_to_annotations(self, video_files: List[str]) -> Dict[str, Dict]:
-        """Map video files to their ground truth annotations."""
+        self.df = pd.read_excel(self.excel_path)
+        return self.df
+
+    def _row_to_record(self, row: pd.Series) -> Dict[str, Any]:
+        video_id = extract_video_id(row["Video Number"])
+        explanation = _safe_str(row.get("Explanation", ""))
+        vehicles = _safe_str(row.get("Type of Vehicles involved", ""))
+        severity = _safe_str(row.get("Severity of the Crash", ""))
+        location = _safe_str(row.get("Location of impact", ""))
+        ambiguity = _safe_str(row.get("Ambiguity", ""))
+        camera = _safe_str(row.get("Camera View", ""))
+        weather = _safe_str(row.get("Weather Conditions", ""))
+
+        num_vehicles = row.get("No. of Vehicles involved", None)
+        if pd.isna(num_vehicles):
+            num_vehicles = None
+        else:
+            num_vehicles = int(float(num_vehicles))
+
+        record = {
+            "video_id": video_id,
+            "video_number": int(float(row["Video Number"])) if not pd.isna(row["Video Number"]) else None,
+            "severity": severity,
+            "vehicles_involved": vehicles,
+            "num_vehicles": num_vehicles,
+            "impact_location": location,
+            "crash_start": _format_time(row.get("Start of Crash")),
+            "crash_end": _format_time(row.get("End of Crash")),
+            "explanation": explanation,
+            "text_summary": explanation,
+            "ambiguity": ambiguity,
+            "camera_view": camera,
+            "weather": weather,
+            "structured_summary": self._build_structured_summary(
+                severity, vehicles, num_vehicles, location, explanation, weather, camera
+            ),
+        }
+        return record
+
+    @staticmethod
+    def _build_structured_summary(
+        severity: str,
+        vehicles: str,
+        num_vehicles: Optional[int],
+        location: str,
+        explanation: str,
+        weather: str,
+        camera: str,
+    ) -> str:
+        parts = []
+        if severity:
+            parts.append(f"Severity: {severity}.")
+        if vehicles:
+            nv = f" ({num_vehicles} vehicles)" if num_vehicles else ""
+            parts.append(f"Vehicles{nv}: {vehicles}.")
+        if location:
+            parts.append(f"Impact location: {location}.")
+        if weather:
+            parts.append(f"Weather: {weather}.")
+        if camera:
+            parts.append(f"Camera view: {camera}.")
+        if explanation:
+            parts.append(explanation)
+        return " ".join(parts).strip()
+
+    def build_all_annotations(self) -> Dict[str, Dict[str, Any]]:
         if self.df is None:
             self.load_excel()
-        
-        columns = self.df.columns.tolist()
-        print(f"Excel columns: {columns}")
-
-        # ---------- Preferred Columns ----------
-        preferred_id_cols = ["Video Number", "Number", "video_id", "Video"]
-        preferred_text_cols = ["Explanation", "explanation"]
-
-        video_id_col = None
-        text_col = None
-
-        # If preferred id exists, force it
-        for c in columns:
-            if c in preferred_id_cols:
-                video_id_col = c
-
-        # If preferred Explanation exists, force it
-        for c in columns:
-            if c in preferred_text_cols:
-                text_col = c
-
-        # ---------- If not found, fall back to heuristics ----------
-        id_patterns = ["id", "video", "video_id", "video_name", "filename", "file"]
-        text_patterns = ["text", "summary", "caption", "description", "annotation", "ground_truth"]
-
-        if video_id_col is None or text_col is None:
-            for col in columns:
-                col_lower = col.lower()
-                if video_id_col is None and any(p in col_lower for p in id_patterns):
-                    video_id_col = col
-                if text_col is None and any(p in col_lower for p in text_patterns):
-                    text_col = col
-
-        # ---------- Final Safety Fallback ----------
-        if video_id_col is None:
-            video_id_col = columns[0]
-        if text_col is None:
-            # If Explanation wasn't explicitly found but still exists
-            if "Explanation" in columns:
-                text_col = "Explanation"
-            elif len(columns) > 1:
-                text_col = columns[1]
-            else:
-                text_col = columns[0]
-
-        print(f"Using video ID column: {video_id_col}")
-        print(f"Using text column (ground truth summary): {text_col}")
-
-        # ---------- Build Annotation Dictionary ----------
-        annotations = {}
+        annotations: Dict[str, Dict[str, Any]] = {}
         for _, row in self.df.iterrows():
-            raw_id = str(row[video_id_col]).strip()
-            video_id = self.extract_video_id(raw_id)
-            text = str(row[text_col]).strip()
+            record = self._row_to_record(row)
+            annotations[record["video_id"]] = record
+        self.annotations = annotations
+        return annotations
 
-            annotations[video_id] = {
-                "video_id": video_id,
-                "text_summary": text,
-                "original_id": raw_id
-            }
-
-        # ---------- Map Only Existing Videos ----------
-        video_annotations = {}
+    def map_videos_to_annotations(self, video_files: List[str]) -> Dict[str, Dict[str, Any]]:
+        if not self.annotations:
+            self.build_all_annotations()
+        video_annotations: Dict[str, Dict[str, Any]] = {}
         for video_file in video_files:
-            vid = self.extract_video_id(video_file)
-
-            if vid in annotations:
-                video_annotations[vid] = annotations[vid]
+            vid = extract_video_id(Path(video_file).stem)
+            if vid in self.annotations:
+                video_annotations[vid] = {**self.annotations[vid], "video_file": str(video_file)}
             else:
-                vid_no_pad = vid.lstrip("0") or "0"
-                if vid_no_pad in annotations:
-                    video_annotations[vid] = annotations[vid_no_pad]
+                alt = vid.lstrip("0") or "0"
+                alt_padded = alt.zfill(6)
+                if alt_padded in self.annotations:
+                    video_annotations[vid] = {**self.annotations[alt_padded], "video_file": str(video_file)}
                 else:
-                    print(f"Warning: No annotation found for video {video_file} (ID: {vid})")
                     video_annotations[vid] = {
                         "video_id": vid,
                         "text_summary": "",
-                        "original_id": video_file
+                        "explanation": "",
+                        "video_file": str(video_file),
                     }
-
-        self.annotations = video_annotations
         return video_annotations
-    
-    def save_annotations(self, output_path: str, format: str = "json"):
-        """Save annotations to file."""
+
+    def save_annotations(self, output_path: str, annotations: Optional[Dict] = None) -> None:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        data = annotations if annotations is not None else self.annotations
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
 
-        if format == "json":
-            with open(output_path, "w") as f:
-                json.dump(self.annotations, f, indent=2, ensure_ascii=False)
-        elif format == "jsonl":
-            with open(output_path, "w") as f:
-                for vid, ann in self.annotations.items():
-                    f.write(json.dumps({vid: ann}, ensure_ascii=False) + "\n")
-        else:
-            raise ValueError(f"Unsupported format: {format}")
-    
-    def get_statistics(self) -> Dict:
-        """Dataset statistics."""
-        if not self.annotations:
+    def save_csv(self, output_path: str, annotations: Optional[Dict] = None) -> None:
+        data = annotations if annotations is not None else self.annotations
+        rows = list(data.values())
+        pd.DataFrame(rows).to_csv(output_path, index=False)
+
+    def get_statistics(self, annotations: Optional[Dict] = None) -> Dict[str, Any]:
+        data = annotations if annotations is not None else self.annotations
+        if not data:
             return {}
-
-        lengths = [len(a["text_summary"].split()) for a in self.annotations.values()]
+        lengths = [len(a.get("text_summary", "").split()) for a in data.values()]
+        with_text = sum(1 for a in data.values() if a.get("text_summary", "").strip())
         return {
-            "total_videos": len(self.annotations),
+            "total_videos": len(data),
+            "videos_with_annotations": with_text,
             "avg_summary_length": sum(lengths) / len(lengths) if lengths else 0,
             "min_summary_length": min(lengths) if lengths else 0,
             "max_summary_length": max(lengths) if lengths else 0,
-            "videos_with_annotations": sum(1 for a in self.annotations.values() if a["text_summary"].strip())
+            "severity_counts": pd.Series(
+                [a.get("severity", "") for a in data.values()]
+            ).value_counts().to_dict(),
         }

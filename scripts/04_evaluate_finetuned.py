@@ -21,12 +21,12 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.models import LLaVANeXTWrapper
-from src.evaluation import BLEUEvaluator, NLIEvaluator
+from src.evaluation.metrics_suite import MetricsSuite
 from src.utils import get_config
+from src.utils.video_ids import annotation_key_from_path
+from src.models.frame_utils import frames_to_collage, collage_temporal_prompt_suffix
+from src.models.prompt_strategies import get_prompt
 
-from rouge_score import rouge_scorer
-from nltk.translate.meteor_score import meteor_score
-from bert_score import score as bert_score
 from PIL import Image
 
 
@@ -55,7 +55,13 @@ def load_frames(video_path: str, max_frames: int = 30):
 
 
 # ------------------------------------------------------------------
-def load_finetuned_model(checkpoint_path: str, base_model_name: str, device: str):
+def load_finetuned_model(
+    checkpoint_path: str,
+    base_model_name: str,
+    device: str,
+    use_collage: bool = True,
+    num_key_frames: int = 4,
+):
     """Load fine-tuned model from checkpoint."""
     from transformers import (
         LlavaNextProcessor,
@@ -166,15 +172,17 @@ def load_finetuned_model(checkpoint_path: str, base_model_name: str, device: str
     
     # Create wrapper-like interface
     class FineTunedWrapper:
-        def __init__(self, model, processor, device, is_next):
+        def __init__(self, model, processor, device, is_next, use_collage, num_key_frames):
             self.model = model
             self.processor = processor
             self.device = device
             self.is_next = is_next
+            self.use_collage = use_collage
+            self.num_key_frames = num_key_frames
             # Get the actual device from model
             try:
                 self.actual_device = next(model.parameters()).device
-            except:
+            except Exception:
                 self.actual_device = torch.device(device if device != "cuda" else "cuda:0")
         
         def generate_summary(self, frames, task_type="v2t"):
@@ -182,23 +190,14 @@ def load_finetuned_model(checkpoint_path: str, base_model_name: str, device: str
             if len(frames) == 0:
                 return {"text_summary": ""}
             
-            # Use middle frame (for now)
-            rep = frames[len(frames) // 2]
-            rep_img = Image.fromarray(rep).convert("RGB")
-            
-            prompt = (
-                "You are an expert traffic accident analyst. "
-                "Watch this car crash video and generate a factual explanation. "
-                "Describe clearly:\n"
-                "- vehicles involved\n"
-                "- number of vehicles\n"
-                "- what each vehicle was doing before the crash\n"
-                "- how the crash happened\n"
-                "- where the impact occurred\n"
-                "- outcome of the crash\n"
-                "Write 4-6 coherent sentences like an incident report. "
-                "Do NOT hallucinate unseen details."
-            )
+            prompt = get_prompt("structured_event", num_frames=len(frames))
+            if self.use_collage and len(frames) > 1:
+                rep_img = frames_to_collage(frames, max_frames=self.num_key_frames)
+                n_key = min(self.num_key_frames, len(frames))
+                prompt = prompt + collage_temporal_prompt_suffix(n_key)
+            else:
+                rep = frames[len(frames) // 2]
+                rep_img = Image.fromarray(cv2.cvtColor(rep, cv2.COLOR_BGR2RGB)).convert("RGB")
             
             formatted_prompt = f"USER: <image>\n{prompt}\nASSISTANT:"
             
@@ -241,8 +240,10 @@ def load_finetuned_model(checkpoint_path: str, base_model_name: str, device: str
             with torch.no_grad():
                 outputs = self.model.generate(
                     **inputs,
-                    max_new_tokens=512,
-                    do_sample=False
+                    max_new_tokens=256,
+                    do_sample=False,
+                    repetition_penalty=1.15,
+                    no_repeat_ngram_size=3,
                 )
             
             text = self.processor.decode(outputs[0], skip_special_tokens=True)
@@ -251,7 +252,7 @@ def load_finetuned_model(checkpoint_path: str, base_model_name: str, device: str
             
             return {"text_summary": text}
     
-    wrapper = FineTunedWrapper(model, processor, device, is_next)
+    wrapper = FineTunedWrapper(model, processor, device, is_next, use_collage, num_key_frames)
     return wrapper
 
 
@@ -285,6 +286,9 @@ def main():
         default="test",
         help="Which split to evaluate on (default: test)"
     )
+    parser.add_argument("--use-collage", action="store_true", default=False)
+    parser.add_argument("--no-collage", action="store_false", dest="use_collage")
+    parser.add_argument("--num-key-frames", type=int, default=4)
     args = parser.parse_args()
     
     # Load config
@@ -313,6 +317,7 @@ def main():
     print(f"EVALUATING FINE-TUNED MODEL ({args.split.upper()} SET)")
     print("=" * 60)
     print(f"Videos: {len(split_videos)}")
+    print(f"Multi-frame collage: {args.use_collage} (key frames={args.num_key_frames})")
     
     # Device setup
     device = config["model"]["device"]
@@ -322,22 +327,15 @@ def main():
     
     # Load model
     base_model_name = args.base_model or config["model"]["vision_model"]
-    model = load_finetuned_model(args.checkpoint, base_model_name, device)
-    
-    # Evaluators
-    bleu_eval = BLEUEvaluator(
-        max_order=config["evaluation"]["bleu"]["max_order"],
-        smooth=config["evaluation"]["bleu"]["smooth"]
+    model = load_finetuned_model(
+        args.checkpoint,
+        base_model_name,
+        device,
+        use_collage=args.use_collage,
+        num_key_frames=args.num_key_frames,
     )
     
-    # NLI evaluator - use CPU to avoid GPU memory conflicts
-    # The main model already uses most GPU memory
-    print("Using CPU for NLI evaluation to avoid GPU memory conflicts")
-    nli_eval = NLIEvaluator(
-        model_name=config["evaluation"]["nli"]["model_name"],
-        device="cpu",  # Use CPU for NLI to avoid GPU memory issues
-        batch_size=config["evaluation"]["nli"]["batch_size"]
-    )
+    metrics_suite = MetricsSuite(config.config)
     
     predictions, references, results = [], [], []
     
@@ -346,11 +344,12 @@ def main():
     for video_path in tqdm(split_videos, desc="Evaluating"):
         video_path = Path(video_path)
         video_id = video_path.stem
-        
-        if video_id not in annotations:
+        ann_key = annotation_key_from_path(str(video_path))
+
+        if ann_key not in annotations:
             continue
-        
-        gt = annotations[video_id]["text_summary"]
+
+        gt = annotations[ann_key]["text_summary"]
         if not gt.strip():
             continue
         
@@ -380,99 +379,41 @@ def main():
     
     # Metrics
     print("\nComputing metrics...")
-    
-    print("Computing BLEU...")
-    bleu_scores = bleu_eval.compute_bleu_batch(predictions, references)
-    
-    print("Computing NLI...")
-    nli_scores = nli_eval.evaluate(predictions, references)
-    
-    print("Computing METEOR, ROUGE, BERTScore, CIDEr...")
-    
-    # METEOR
-    meteor_vals = [
-        meteor_score([r.split()], p.split())
-        for p, r in zip(predictions, references)
-    ]
-    mean_meteor = float(np.mean(meteor_vals))
-    
-    # ROUGE
-    scorer = rouge_scorer.RougeScorer(
-        ["rouge1", "rouge2", "rougeL"], use_stemmer=True
-    )
-    
-    r1, r2, rl = [], [], []
-    for p, r in zip(predictions, references):
-        s = scorer.score(r, p)
-        r1.append(s["rouge1"].fmeasure)
-        r2.append(s["rouge2"].fmeasure)
-        rl.append(s["rougeL"].fmeasure)
-    
-    mean_rouge_1 = float(np.mean(r1))
-    mean_rouge_2 = float(np.mean(r2))
-    mean_rouge_l = float(np.mean(rl))
-    
-    # BERTScore - use CPU to avoid GPU memory issues
-    try:
-        _, _, F1 = bert_score(predictions, references, lang="en", verbose=False, device="cpu")
-        mean_bertscore = float(F1.mean())
-    except Exception as e:
-        print(f"Warning: BERTScore computation failed: {e}")
-        print("Skipping BERTScore, setting to 0.0")
-        mean_bertscore = 0.0
-    
-    # CIDEr
-    from pycocoevalcap.cider.cider import Cider
-    cider = Cider()
-    cider_vals = []
-    for p, r in zip(predictions, references):
-        s, _ = cider.compute_score({0: [r]}, {0: [p]})
-        cider_vals.append(s)
-    mean_cider = float(np.mean(cider_vals))
+    metrics = metrics_suite.compute_all(predictions, references)
+    metrics["checkpoint"] = args.checkpoint
+    metrics["split"] = args.split
+    metrics["use_collage"] = args.use_collage
+    metrics["num_key_frames"] = args.num_key_frames if args.use_collage else 1
+    # Legacy keys for compare script
+    metrics["bleu_scores"] = metrics.get("bleu", {})
+    metrics["nli_scores"] = metrics.get("nli", {})
     
     # Save results
     checkpoint_name = Path(args.checkpoint).stem
-    results_dir = Path(config["paths"]["results"]) / "finetuned" / checkpoint_name
+    suffix = "_collage" if args.use_collage else ""
+    results_dir = Path(config["paths"]["results"]) / "finetuned" / f"{checkpoint_name}{suffix}"
     results_dir.mkdir(parents=True, exist_ok=True)
     
     with open(results_dir / "detailed_results.json", "w") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
     
-    metrics = {
-        "num_samples": len(predictions),
-        "checkpoint": args.checkpoint,
-        "split": args.split,
-        "bleu_scores": bleu_scores,
-        "meteor": mean_meteor,
-        "rouge_1": mean_rouge_1,
-        "rouge_2": mean_rouge_2,
-        "rouge_l": mean_rouge_l,
-        "bertscore": mean_bertscore,
-        "cider": mean_cider,
-        "nli_scores": nli_scores
-    }
-    
     with open(results_dir / "metrics.json", "w") as f:
         json.dump(metrics, f, indent=2)
+    
+    flat = metrics_suite.flatten_for_table(metrics)
     
     # Print summary
     print("\n" + "=" * 60)
     print("EVALUATION RESULTS")
     print("=" * 60)
     print(f"Samples: {len(predictions)}")
-    print(f"BLEU-1: {bleu_scores['bleu_1']:.4f}")
-    print(f"BLEU-4: {bleu_scores['bleu_4']:.4f}")
-    print(f"METEOR: {mean_meteor:.4f}")
-    print(f"ROUGE-1: {mean_rouge_1:.4f}")
-    print(f"ROUGE-2: {mean_rouge_2:.4f}")
-    print(f"ROUGE-L: {mean_rouge_l:.4f}")
-    print(f"BERTScore: {mean_bertscore:.4f}")
-    print(f"CIDEr: {mean_cider:.4f}")
-    print(f"\nNLI Scores:")
-    print(f"  Entailment Accuracy: {nli_scores['entailment_accuracy']:.4f}")
-    print(f"  Contradiction Rate: {nli_scores['contradiction_rate']:.4f}")
-    print(f"  Neutral Rate: {nli_scores['neutral_rate']:.4f}")
-    print(f"  Avg Entailment Prob: {nli_scores['avg_entailment_prob']:.4f}")
+    print(f"BLEU-1: {flat.get('bleu_1', 0):.4f}")
+    print(f"BLEU-4: {flat.get('bleu_4', 0):.4f}")
+    print(f"METEOR: {flat.get('meteor', 0):.4f}")
+    print(f"ROUGE-L: {flat.get('rouge_l', 0):.4f}")
+    print(f"BERTScore: {flat.get('bertscore', 0):.4f}")
+    print(f"CIDEr: {flat.get('cider', 0):.4f}")
+    print(f"NLI Entailment: {flat.get('nli_entailment_acc', 0):.4f}")
     print(f"\nResults saved to: {results_dir}")
     print("=" * 60)
 

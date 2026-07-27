@@ -20,7 +20,11 @@ import argparse
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+from src.models.frame_utils import frames_to_collage, collage_temporal_prompt_suffix
+from src.models.prompt_strategies import get_prompt
+from src.data_processing.frame_sampler import FrameSampler
 from src.utils import get_config
+from src.utils.video_ids import annotation_key_from_path
 from src.models import LLaVANeXTWrapper
 from src.training import LossTracker
 
@@ -37,7 +41,12 @@ class VideoSummarizationDataset(Dataset):
         annotations: Dict[str, Dict],
         max_frames: int = 30,
         processor=None,
-        is_next: bool = True
+        is_next: bool = True,
+        use_collage: bool = True,
+        num_key_frames: int = 4,
+        prompt_strategy: str = "structured_event",
+        frames_root: Optional[Path] = None,
+        sampling_strategy: str = "every_5th",
     ):
         """
         Initialize dataset.
@@ -54,17 +63,22 @@ class VideoSummarizationDataset(Dataset):
         self.max_frames = max_frames
         self.processor = processor
         self.is_next = is_next
+        self.use_collage = use_collage
+        self.num_key_frames = num_key_frames
+        self.prompt_strategy = prompt_strategy
+        self.frames_root = frames_root
+        self.sampling_strategy = sampling_strategy
         
         # Filter out videos without annotations
         self.valid_pairs = []
         for video_path in video_paths:
             video_path = Path(video_path)
-            video_id = video_path.stem
-            
-            if video_id in annotations:
-                text_summary = annotations[video_id].get("text_summary", "").strip()
+            ann_key = annotation_key_from_path(str(video_path))
+
+            if ann_key in annotations:
+                text_summary = annotations[ann_key].get("text_summary", "").strip()
                 if text_summary:
-                    self.valid_pairs.append((str(video_path), video_id, text_summary))
+                    self.valid_pairs.append((str(video_path), ann_key, text_summary))
     
     def __len__(self):
         return len(self.valid_pairs)
@@ -72,31 +86,18 @@ class VideoSummarizationDataset(Dataset):
     def __getitem__(self, idx):
         video_path, video_id, text_summary = self.valid_pairs[idx]
         
-        # Load frames and use middle frame (consistent with evaluation)
         frames = self._load_frames(video_path, self.max_frames)
         if len(frames) == 0:
-            # Return a dummy frame if video loading fails
-            rep_frame = np.zeros((224, 224, 3), dtype=np.uint8)
+            rep_img = Image.fromarray(np.zeros((224, 224, 3), dtype=np.uint8)).convert("RGB")
+        elif self.use_collage and len(frames) > 1:
+            rep_img = frames_to_collage(frames, max_frames=self.num_key_frames)
         else:
-            rep_frame = frames[len(frames) // 2]
-        
-        # Convert to PIL Image
-        rep_img = Image.fromarray(rep_frame).convert("RGB")
-        
-        # Create prompt (same as in generate_summary)
-        prompt = (
-            "You are an expert traffic accident analyst. "
-            "Watch this car crash video and generate a factual explanation. "
-            "Describe clearly:\n"
-            "- vehicles involved\n"
-            "- number of vehicles\n"
-            "- what each vehicle was doing before the crash\n"
-            "- how the crash happened\n"
-            "- where the impact occurred\n"
-            "- outcome of the crash\n"
-            "Write 4-6 coherent sentences like an incident report. "
-            "Do NOT hallucinate unseen details."
-        )
+            rep = frames[len(frames) // 2]
+            rep_img = Image.fromarray(cv2.cvtColor(rep, cv2.COLOR_BGR2RGB)).convert("RGB")
+
+        prompt = get_prompt(self.prompt_strategy, num_frames=len(frames))
+        if self.use_collage and len(frames) > 1:
+            prompt += collage_temporal_prompt_suffix(min(self.num_key_frames, len(frames)))
         
         # Format: USER: <image>\n{prompt}\nASSISTANT: {text_summary}
         user_prompt = f"USER: <image>\n{prompt}\nASSISTANT:"
@@ -141,7 +142,11 @@ class VideoSummarizationDataset(Dataset):
         return result
     
     def _load_frames(self, video_path: str, max_frames: int) -> List[np.ndarray]:
-        """Load frames from video file."""
+        stem = Path(video_path).stem
+        if self.frames_root:
+            cached, _ = FrameSampler.load_cached_frames(stem, self.sampling_strategy, self.frames_root)
+            if cached:
+                return cached[:max_frames]
         cap = cv2.VideoCapture(video_path)
         frames = []
         frame_count = 0
@@ -677,20 +682,28 @@ def main():
     # Create datasets
     print("\nCreating datasets...")
     max_frames = config.get("model.max_frames") or config.config["model"]["max_frames"]
+    train_cfg = config.config.get("training", {})
+    frames_root = processed_dir / "frames"
+    ds_kwargs = dict(
+        max_frames=max_frames,
+        processor=processor,
+        is_next=is_next,
+        use_collage=train_cfg.get("use_collage", True),
+        num_key_frames=train_cfg.get("num_key_frames", 4),
+        prompt_strategy=train_cfg.get("prompt_strategy", "structured_event"),
+        frames_root=frames_root,
+        sampling_strategy=config.config.get("dataset", {}).get("default_sampling", "every_5th"),
+    )
     train_dataset = VideoSummarizationDataset(
         video_paths=train_videos,
         annotations=train_annotations,
-        max_frames=max_frames,
-        processor=processor,
-        is_next=is_next
+        **ds_kwargs,
     )
     
     val_dataset = VideoSummarizationDataset(
         video_paths=val_videos,
         annotations=val_annotations,
-        max_frames=max_frames,
-        processor=processor,
-        is_next=is_next
+        **ds_kwargs,
     )
     
     print(f"Train samples: {len(train_dataset)}")
@@ -786,6 +799,10 @@ def main():
         print(f"  Free: {total - reserved:.2f} GB")
     
     best_val_loss = float('inf')
+    patience = train_cfg.get("early_stopping_patience", 1)
+    if isinstance(patience, str):
+        patience = int(patience)
+    patience_counter = 0
     
     for epoch in range(1, num_epochs + 1):
         print(f"\n{'='*60}")
@@ -819,24 +836,30 @@ def main():
         print(f"  Train Loss: {train_loss:.4f}")
         print(f"  Val Loss: {val_loss:.4f}")
         
+        improved = val_loss < best_val_loss
+        if improved:
+            best_val_loss = val_loss
+            patience_counter = 0
+        else:
+            patience_counter += 1
+            print(f"  No val improvement ({patience_counter}/{patience})")
+
         # Save checkpoint
-        if epoch % save_every == 0 or val_loss < best_val_loss:
+        if epoch % save_every == 0 or improved:
             checkpoint_path = save_dir / f"checkpoint_epoch_{epoch}.pt"
             
-            # Save model state
             torch.save({
                 "epoch": epoch,
                 "model_state_dict": model.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
                 "train_loss": train_loss,
                 "val_loss": val_loss,
-                "config": dict(config.config)  # Save config
+                "config": dict(config.config)
             }, checkpoint_path)
             
             print(f"  Saved checkpoint: {checkpoint_path}")
             
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
+            if improved:
                 best_checkpoint = save_dir / "best_checkpoint.pt"
                 torch.save({
                     "epoch": epoch,
@@ -847,6 +870,10 @@ def main():
                     "config": dict(config.config)
                 }, best_checkpoint)
                 print(f"  Saved best checkpoint: {best_checkpoint} (val_loss: {val_loss:.4f})")
+
+        if patience_counter >= patience:
+            print(f"\nEarly stopping at epoch {epoch} (best val_loss={best_val_loss:.4f})")
+            break
     
     print("\n" + "=" * 60)
     print("TRAINING COMPLETE")

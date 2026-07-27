@@ -32,8 +32,11 @@ data/processed/
 !config/*.json
 !src/**/*.json
 
-# Results
-results/
+# Results (keep generated tables under results/tables/ versioned)
+results/*
+!results/tables/
+!results/tables/**
+!results/tables/*.json
 *.pth
 *.pt
 *.ckpt

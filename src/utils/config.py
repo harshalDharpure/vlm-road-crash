@@ -37,7 +37,10 @@ class Config:
         # Update dataset paths
         if 'dataset' in self.config:
             dataset_config = self.config['dataset']
-            if 'root_dir' in dataset_config:
+            env_root = os.environ.get("VLM_DATA_ROOT")
+            if env_root:
+                dataset_config['root_dir'] = str(Path(env_root).expanduser().resolve())
+            elif 'root_dir' in dataset_config:
                 root = Path(dataset_config['root_dir'])
                 if not root.is_absolute():
                     dataset_config['root_dir'] = str(project_root / root)

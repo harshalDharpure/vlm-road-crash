@@ -24,10 +24,19 @@ class BLEUEvaluator:
             nltk.data.find('tokenizers/punkt')
         except LookupError:
             nltk.download('punkt', quiet=True)
+        # Newer NLTK versions may also require punkt_tab
+        try:
+            nltk.data.find('tokenizers/punkt_tab/english/')
+        except LookupError:
+            nltk.download('punkt_tab', quiet=True)
     
     def tokenize(self, text: str) -> List[str]:
         """Tokenize text into words."""
-        return nltk.word_tokenize(text.lower())
+        try:
+            return nltk.word_tokenize(text.lower())
+        except LookupError:
+            # If tokenizers are still missing at runtime, fall back to a simple split.
+            return text.lower().split()
     
     def compute_bleu(self, prediction: str, reference: str) -> Dict[str, float]:
         """
