@@ -521,9 +521,11 @@ Thresholds are selected on validation data only.
 
 ---
 
-## 10. Training objectives
+# 10. Training Objectives
 
-### 10.1 Time-weighted anticipation loss
+## 10.1 Time-Weighted Anticipation Loss
+
+The anticipation objective predicts future collision probability over time while accounting for decision relevance.
 
 $$
 \mathcal{L}_{ant}
@@ -539,21 +541,25 @@ y_i\log p_{i,t}
 \right]
 $$
 
-Weights must not reward arbitrary early confidence. They are chosen relative to the annotated decision/contact times and validated through ablation.
+The weighting function $w_{i,t}$ must not reward arbitrary early confidence. 
+Weights are selected relative to annotated decision/contact times and validated through ablation studies.
 
-### 10.2 Decision-time loss
+---
 
-Let $r_{i,t}$ be a soft target centered on annotated $t_{d,i}$:
+## 10.2 Decision-Time Loss
+
+Let $r_{i,t}$ be a soft target centered around the annotated decision time $t_{d,i}$:
 
 $$
 r_{i,t}
 =
-\exp\left(
+\exp
+\left(
 -\frac{(t-t_{d,i})^2}{2\sigma_d^2}
 \right)
 $$
 
-Then:
+The decision-time loss is:
 
 $$
 \mathcal{L}_{dec}
@@ -567,7 +573,9 @@ r_{i,t}\log d_{i,t}
 \right]
 $$
 
-### 10.3 Pre-evidence suppression
+---
+
+## 10.3 Pre-Evidence Suppression Loss
 
 For positive samples:
 
@@ -581,25 +589,32 @@ $$
 \max(0,p_{i,t}-\delta)^2
 $$
 
-$\delta$ is a permissible background-risk level selected using validation calibration.
+where $\delta$ represents the permissible background-risk level selected using validation calibration.
 
-This loss does not imply that accident probability is literally zero before $t_d$; it discourages unjustified high confidence.
+This loss does not assume accident probability is zero before $t_d$.  
+It discourages unjustified high-confidence predictions before sufficient evidence exists.
 
-### 10.4 Matched-pair ranking
+---
+
+## 10.4 Matched-Pair Ranking Loss
 
 $$
 \mathcal{L}_{pair}
 =
-\frac{1}{N_p}\sum_{i=1}^{N_p}
-\max\left(
+\frac{1}{N_p}
+\sum_{i=1}^{N_p}
+\max
+\left(
 0,
-m-\left[p^+_{i,t^*}-p^-_{i,t^*}\right]
+m-(p^+_{i,t^*}-p^-_{i,t^*})
 \right)
 $$
 
-where $t^*$ is a defined post-divergence evaluation time.
+where $t^*$ is the predefined post-divergence evaluation time.
 
-### 10.5 Pre-divergence consistency
+---
+
+## 10.5 Pre-Divergence Consistency Loss
 
 $$
 \mathcal{L}_{same}
@@ -608,10 +623,14 @@ $$
 \sum_i
 \frac{1}{t_{d,i}-1}
 \sum_{t<t_{d,i}}
-\left(p^+_{i,t}-p^-_{i,t}\right)^2
+(p^+_{i,t}-p^-_{i,t})^2
 $$
 
-### 10.6 Post-divergence separation
+This encourages matched pairs to remain similar before the actual divergence point.
+
+---
+
+## 10.6 Post-Divergence Separation Loss
 
 $$
 \mathcal{L}_{div}
@@ -620,73 +639,98 @@ $$
 \sum_i
 \frac{1}{t_{c,i}-t_{d,i}+1}
 \sum_{t=t_{d,i}}^{t_{c,i}}
-\max\left(
+\max
+\left(
 0,
-m_t-\left[p^+_{i,t}-p^-_{i,t}\right]
+m_t-(p^+_{i,t}-p^-_{i,t})
 \right)
 $$
 
-### 10.7 Style-invariance loss
+---
 
-Let $A_s$ modify compression, color, resolution, border, overlay, or noise without changing motion:
+## 10.7 Style-Invariance Loss
+
+Let $A_s$ modify visual style properties such as compression, color, resolution, borders, overlays, or noise while preserving motion.
 
 $$
 X'_i=A_s(X_i)
 $$
 
-Then:
+The invariance objective is:
 
 $$
 \mathcal{L}_{inv}
 =
-\frac{1}{N}\sum_i
+\frac{1}{N}
+\sum_i
 \left\|
 E_c(X_i)-E_c(X'_i)
 \right\|_2^2
 $$
 
-Every augmentation must be audited to ensure it preserves traffic dynamics.
+All augmentations must be audited to ensure that traffic dynamics remain unchanged.
 
-### 10.8 Source-adversarial loss
+---
+
+## 10.8 Source-Adversarial Loss
 
 For source label $s_i$:
 
 $$
 \mathcal{L}_{src}
 =
--\frac{1}{N}\sum_i
-\log P(s_i\mid \operatorname{GRL}(z^c_i))
+-\frac{1}{N}
+\sum_i
+\log
+P
+(s_i|\operatorname{GRL}(z^c_i))
 $$
 
-The gradient-reversal layer reverses the encoder gradient. Therefore, $\mathcal{L}_{src}$ is added with a positive coefficient; it is not also negated in the total loss.
+The gradient reversal layer reverses the encoder gradient.
 
-Source-adversarial training is valid only when source is not perfectly confounded with class.
+Therefore:
 
-### 10.9 Calibration loss
+- $\mathcal{L}_{src}$ is added with a positive coefficient.
+- It must not be negated again in the final objective.
 
-Use a Brier-style term:
+Source adversarial training is valid only when source is not perfectly correlated with class labels.
+
+---
+
+## 10.9 Calibration Loss
+
+A Brier-style calibration loss:
 
 $$
 \mathcal{L}_{cal}
 =
-\frac{1}{NT}\sum_{i,t}(p_{i,t}-y_i)^2
+\frac{1}{NT}
+\sum_{i,t}
+(p_{i,t}-y_i)^2
 $$
 
-Calibration should also be evaluated post hoc; training with Brier loss does not guarantee calibration under distribution shift.
+Calibration must also be evaluated after training because minimizing Brier loss alone does not guarantee calibration under distribution shift.
 
-### 10.10 Structured-outcome loss
+---
+
+## 10.10 Structured Outcome Loss
 
 $$
 \mathcal{L}_{attr}
 =
 \sum_{k\in\mathcal{A}}
-\lambda_k\,
-\operatorname{CE}(\hat{a}_{i,k},a_{i,k})
+\lambda_k
+CE(\hat{a}_{i,k},a_{i,k})
 $$
 
-with masked loss for missing attributes and multi-label BCE for vehicle sets.
+Use:
 
-### 10.11 Final objective
+- masked loss for missing attributes;
+- multi-label BCE for vehicle sets.
+
+---
+
+# 10.11 Final Training Objective
 
 $$
 \mathcal{L}_{total}
@@ -703,47 +747,55 @@ $$
 +\lambda_{attr}\mathcal{L}_{attr}
 $$
 
-Not all terms should be enabled initially. Each term requires a controlled ablation, and terms requiring unavailable labels remain disabled in the current-data pilot.
----
+Not all objectives should be activated initially.
 
-## 11. Primary model families
+Each component requires controlled ablation.
 
-Use seven main families only after the go/no-go diagnostics succeed.
-
-| # | Family | Concrete model | Role |
-|---:|---|---|---|
-| 1 | Classical anticipation | **UString / CCD model** | Original CCD reference |
-| 2 | Interaction-graph anticipation | **Graph(Graph), WACV 2024** | Tests whether relational modeling removes shortcuts |
-| 3 | General video foundation model | **VideoMAE-Large** (`MCG-NJU/videomae-large`) | Primary temporal visual baseline/backbone |
-| 4 | Independent modern video model | **InternVideo2-1B** | Strong self-supervised video representation |
-| 5 | Open video-capable VLM | **Qwen2.5-VL-7B-Instruct** | Structured zero-shot/few-shot reasoning |
-| 6 | Independent video VLM | **LLaVA-Video-7B-Qwen2** | Native video-instruction baseline |
-| 7 | Proposed | **EviForecaster** | Selective evidence-conditioned forecasting |
-
-Optional supplementary baselines:
-
-- Video Swin-Large;
-- InternVL2.5/3 approximately 8B;
-- one 20B–32B multimodal model for zero-shot scaling analysis;
-- optical-flow logistic regression;
-- CNN-GRU;
-- order-invariant pooling with the same visual encoder.
-
-Do not train multiple 32B–72B VLMs. Model count is not the contribution.
+Loss terms requiring unavailable annotations remain disabled in the current-data pilot.
 
 ---
 
-## 12. VLM protocol
+# 11. Primary Model Families
 
-VLMs receive video prefixes at fixed horizons:
+Seven primary families are evaluated after successful go/no-go diagnostics.
 
-- 0.5 s;
-- 1.0 s;
-- 1.5 s;
-- 2.0 s;
-- continuing to available prefix length.
+| ID | Family | Model | Purpose |
+|---|---|---|---|
+| 1 | Classical anticipation | UString / CCD model | Original CCD reference |
+| 2 | Interaction graph anticipation | Graph(Graph), WACV 2024 | Tests relational reasoning |
+| 3 | Video foundation model | VideoMAE-Large (`MCG-NJU/videomae-large`) | Primary temporal backbone |
+| 4 | Self-supervised video model | InternVideo2-1B | Strong video representation baseline |
+| 5 | Video-language model | Qwen2.5-VL-7B-Instruct | Zero-shot/few-shot reasoning |
+| 6 | Video-language model | LLaVA-Video-7B-Qwen2 | Independent VLM baseline |
+| 7 | Proposed method | EviForecaster | Evidence-conditioned forecasting |
 
-Use one shared constrained schema:
+---
+
+## Optional Supplementary Baselines
+
+Additional experiments may include:
+
+- Video Swin-Large
+- InternVL2.5/3 (~8B)
+- One 20B–32B multimodal model for scaling analysis
+- Optical-flow logistic regression
+- CNN-GRU
+- Order-invariant pooling with identical visual encoder
+
+The contribution should come from methodology, not from training many large VLMs.
+
+---
+# 12. VLM Protocol
+
+Vision-language models (VLMs) receive video prefixes at fixed observation horizons:
+
+- 0.5 s
+- 1.0 s
+- 1.5 s
+- 2.0 s
+- Continuing to the maximum available prefix length
+
+All VLM evaluations use one shared constrained output schema:
 
 ```json
 {
@@ -758,113 +810,168 @@ Use one shared constrained schema:
 }
 ```
 
-Rules:
+## Evaluation Rules
 
-- zero-shot evaluation for both VLMs;
-- LoRA on at most one open VLM;
-- identical frames, prompt, schema, and decoding settings;
-- no ground-truth reference supplied at test inference;
-- malformed JSON counted and reported;
-- no chain-of-thought requirement;
-- free-text explanation evaluated separately from accident prediction.
+- Both VLMs are evaluated using zero-shot inference.
+- LoRA fine-tuning is allowed on at most one open VLM.
+- Frames, prompts, output schema, and decoding parameters must remain identical across models.
+- Ground-truth labels are never provided during test inference.
+- Malformed JSON outputs are counted and reported.
+- Chain-of-thought generation is not required.
+- Free-text explanations are evaluated separately from accident prediction performance.
 
 ---
 
-## 13. Diagnostic transformations
+# 13. Diagnostic Transformations
 
-### 13.1 First-frame test
+Diagnostic transformations are used to identify shortcut learning, temporal dependence, and robustness failures.
+
+---
+
+## 13.1 First-Frame Test
+
+Only the first video frame is provided:
 
 $$
 X_{first}=\{x_1\}
 $$
 
-High performance suggests static context or source shortcuts.
+High performance indicates possible reliance on static scene information or source-specific shortcuts.
 
-### 13.2 Background-only test
+---
 
-For road-user mask $M_t$:
+## 13.2 Background-Only Test
+
+Given a road-user mask $M_t$:
 
 $$
 \tilde{x}^{BG}_t=x_t\odot(1-M_t)
 $$
 
-High accident performance suggests background/source information predicts labels.
+This removes dynamic agents while preserving background information.
 
-### 13.3 Agent-only test
+High accident prediction performance suggests that background or dataset-specific information may be influencing predictions.
+
+---
+
+## 13.3 Agent-Only Test
+
+The model receives only road-user regions:
 
 $$
 \tilde{x}^{FG}_t=x_t\odot M_t
 $$
 
-This tests performance after removing most scene context.
+This evaluates whether predictions depend primarily on interacting agents rather than scene context.
 
-### 13.4 Shuffled frames
+---
 
-For random permutation $\pi$:
+## 13.4 Shuffled Frames
+
+Frames are randomly permuted using permutation $\pi$:
 
 $$
 X_{shuffle}
 =
-\{x_{\pi(1)},\ldots,x_{\pi(T)}\}
+\{x_{\pi(1)},x_{\pi(2)},...,x_{\pi(T)}\}
 $$
 
-### 13.5 Reversed frames
+A large performance decrease indicates dependence on temporal ordering.
+
+---
+
+## 13.5 Reversed Frames
+
+Temporal order is reversed:
 
 $$
 X_{reverse}
 =
-\{x_T,x_{T-1},\ldots,x_1\}
+\{x_T,x_{T-1},...,x_1\}
 $$
 
-### 13.6 Repeated frame
+This tests whether the model understands forward causal evolution rather than only visual appearance.
+
+---
+
+## 13.6 Repeated-Frame Test
+
+A single frame is repeated:
 
 $$
 X_{repeat}^{(k)}
 =
-\{x_k,x_k,\ldots,x_k\}
+\{x_k,x_k,...,x_k\}
 $$
 
-### 13.7 Metadata-only test
-
-Use no semantic pixels. Features may include:
-
-$$
-m=
-[\text{resolution, bitrate, codec, border statistics,
-color statistics, frame-size statistics}]
-$$
-
-Metadata features must be defined before looking at test performance.
-
-### 13.8 Temporal-position control
-
-Randomly shift or crop event position where valid, preventing the model from using a fixed "crash near frame 30" prior. Transformations must preserve labels and remain inside available video context.
+Strong performance indicates possible reliance on static appearance rather than temporal evidence.
 
 ---
 
-## 14. Metrics
+## 13.7 Metadata-Only Test
 
-### 14.1 Standard metrics
+No semantic visual information is provided.
+
+Metadata features may include:
+
+$$
+m=
+[
+\text{resolution},
+\text{bitrate},
+\text{codec},
+\text{border statistics},
+\text{color statistics},
+\text{frame-size statistics}
+]
+$$
+
+Metadata features must be defined before test evaluation to prevent post-hoc feature selection.
+
+---
+
+## 13.8 Temporal-Position Control
+
+Event timing is randomly shifted or cropped when valid.
+
+The transformation prevents models from exploiting fixed temporal priors such as:
+
+> "The accident occurs near frame 30."
+
+All transformations must preserve labels and remain within the available video context.
+
+---
+
+# 14. Metrics
+
+## 14.1 Standard Metrics
 
 Report:
 
-- Average Precision;
-- mean Time-to-Accident;
-- TTA at fixed recall (50%, 70%, 80%);
-- false alarms per hour;
-- Expected Calibration Error;
-- Brier score;
-- negative log-likelihood.
+- Average Precision (AP)
+- Mean Time-to-Accident (TTA)
+- TTA at fixed recall levels:
+  - 50%
+  - 70%
+  - 80%
+- False alarms per hour
+- Expected Calibration Error (ECE)
+- Brier score
+- Negative log-likelihood (NLL)
 
 For threshold-crossing time $\tau_i$:
 
 $$
-\operatorname{TTA}_i=t_{c,i}-\tau_i
+\operatorname{TTA}_i
+=
+t_{c,i}-\tau_i
 $$
 
-Always report TTA with recall/precision or false-alarm operating point.
+TTA must always be reported together with the corresponding recall, precision, or false-alarm operating point.
 
-### 14.2 Evidence-Conditioned Warning Time
+---
+
+## 14.2 Evidence-Conditioned Warning Time (ECWT)
 
 $$
 \operatorname{ECWT}_i
@@ -872,9 +979,13 @@ $$
 t_{c,i}-\max(\tau_i,t_{d,i})
 $$
 
-ECWT measures warning after evidence becomes available. It must be reported with pre-evidence risk because it does not itself penalize premature threshold crossings.
+ECWT measures warning time after evidence becomes available.
 
-### 14.3 Pre-Evidence Risk
+It must be reported together with pre-evidence risk because ECWT alone does not penalize premature predictions.
+
+---
+
+## 14.3 Pre-Evidence Risk (PER)
 
 $$
 \operatorname{PER}
@@ -882,34 +993,46 @@ $$
 \frac{1}{N_+}
 \sum_{i:y_i=1}
 \frac{1}{t_{d,i}-1}
-\sum_{t<t_{d,i}}p_{i,t}
+\sum_{t<t_{d,i}}
+p_{i,t}
 $$
 
-Lower is better.
+Lower PER indicates fewer unsupported early warnings.
 
-### 14.4 Matched-Pair Accuracy
+---
+
+## 14.4 Matched-Pair Accuracy (MPA)
 
 $$
 \operatorname{MPA}
 =
 \frac{1}{N_p}
 \sum_{i=1}^{N_p}
-\mathbb{1}[f(X_i^+)>f(X_i^-)]
+\mathbb{1}
+[
+f(X_i^+)>f(X_i^-)
+]
 $$
 
-Call this Counterfactual Pair Accuracy only for genuine controlled interventions.
+The term **Counterfactual Pair Accuracy** should only be used when the pairs represent genuine controlled interventions.
 
-### 14.5 Pairwise Ranking Margin
+---
+
+## 14.5 Pairwise Ranking Margin (PRM)
 
 $$
 \operatorname{PRM}
 =
 \frac{1}{N_p}
 \sum_i
-\left[f(X_i^+)-f(X_i^-)\right]
+\left[
+f(X_i^+)-f(X_i^-)
+\right]
 $$
 
-### 14.6 Temporal Dependence Gap
+---
+
+## 14.6 Temporal Dependence Gap (TDG)
 
 $$
 \operatorname{TDG}
@@ -919,43 +1042,70 @@ $$
 \operatorname{AP}_{shuffled}
 $$
 
-Also report reversed and repeated-frame results separately.
+Also report:
 
-### 14.7 First-frame and background shortcut retention
+- reversed-frame performance
+- repeated-frame performance
+
+separately.
+
+---
+
+## 14.7 First-Frame and Background Shortcut Retention
+
+### First-Frame Shortcut Score
 
 $$
 \operatorname{FFS}
 =
-\frac{\operatorname{AP}_{first}}
-{\max(\epsilon,\operatorname{AP}_{full})}
+\frac{
+\operatorname{AP}_{first}
+}
+{
+\max(\epsilon,\operatorname{AP}_{full})
+}
 $$
+
+
+### Background Shortcut Score
 
 $$
 \operatorname{BSS}
 =
-\frac{\operatorname{AP}_{background}}
-{\max(\epsilon,\operatorname{AP}_{full})}
+\frac{
+\operatorname{AP}_{background}
+}
+{
+\max(\epsilon,\operatorname{AP}_{full})
+}
 $$
 
-Lower shortcut retention is better, provided full-video AP remains strong.
+Lower shortcut retention is preferred while maintaining strong full-video performance.
 
-### 14.8 Shortcut Reliance Index
+---
+
+## 14.8 Shortcut Reliance Index (SRI)
 
 $$
 \operatorname{SRI}
 =
 \frac{
 \operatorname{AP}_{first}
-+\operatorname{AP}_{background}
-+\operatorname{AP}_{shuffled}
-+\operatorname{AP}_{metadata}
-}{
++
+\operatorname{AP}_{background}
++
+\operatorname{AP}_{shuffled}
++
+\operatorname{AP}_{metadata}
+}
+{
 4\max(\epsilon,\operatorname{AP}_{full})
 }
 $$
 
-SRI is secondary. Every component must be shown separately.
+SRI is a secondary diagnostic metric.
 
+All individual components must always be reported separately.
 ### 14.9 Selective prediction
 
 Report:
