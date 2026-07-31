@@ -271,7 +271,6 @@ Individual components such as temporal grounding, calibration, abstention, sourc
 - first risk-cue benchmark;
 - first temporal-order test;
 - first VLM for accident understanding;
-- guaranteed NeurIPS/CVPR acceptance.
 
 ---
 
@@ -313,7 +312,7 @@ For the complete A*-level study:
 - double-annotate at least 150 pairs;
 - lock at least 100 pairs for final evaluation;
 - evaluate on an independently sourced accident dataset;
-- for a NeurIPS-oriented general claim, add one non-driving rare-event domain.
+  
 
 ### 7.3 Matched controls versus counterfactuals
 
@@ -1580,7 +1579,7 @@ Possible title:
 
 > **Are We Really Anticipating Accidents? Evidence-Controlled Evaluation of Traffic Video Forecasting**
 
-### NeurIPS positioning
+### positioning
 
 Emphasize:
 
@@ -1594,7 +1593,6 @@ Possible title:
 
 > **When Early Prediction Is Just Early Guessing: Evidence-Conditioned Selective Forecasting for Rare-Event Videos**
 
-### Acceptance condition
 
 The paper becomes compelling only if it demonstrates:
 
