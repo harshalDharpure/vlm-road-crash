@@ -213,16 +213,16 @@ The central benchmark-validity question is whether strong accident-anticipation 
 
 For each positive video, define:
 
-- \(t_h\): first appearance of a potentially relevant participant or hazard;
-- \(t_r\): first observable risk cue;
-- \(t_d\): decision/divergence point;
-- \(t_c\): physical contact or annotated crash onset.
+- $t_h$: first appearance of a potentially relevant participant or hazard;
+- $t_r$: first observable risk cue;
+- $t_d$: decision/divergence point;
+- $t_c$: physical contact or annotated crash onset.
 
-The key variable is \(t_d\):
+The key variable is $t_d$:
 
 > The earliest time at which trained annotators can distinguish the future crash trajectory from an appropriately matched non-crash outcome using visible evidence.
 
-Before \(t_d\), high confidence may represent premature guessing. After \(t_d\), risk should rise if the model uses collision-relevant evidence.
+Before $t_d$, high confidence may represent premature guessing. After $t_d$, risk should rise if the model uses collision-relevant evidence.
 
 Decision time is subjective and must be annotated using:
 
@@ -231,9 +231,8 @@ Decision time is subjective and must be annotated using:
 - adjudication for disagreements;
 - frame-tolerance agreement;
 - mean absolute annotator difference;
-- Krippendorff’s \(\alpha\);
-- explicit “insufficient evidence” and “uncertain boundary” options.
-
+- Krippendorff's $\alpha$;
+- explicit "insufficient evidence" and "uncertain boundary" options.
 ---
 
 ## 6. Central novelty
@@ -282,10 +281,10 @@ Using only current local assets:
 2. quarantine malformed and weak no-event records;
 3. create prefixes ending strictly before crash onset:
 
-\[
+$$
 X^{(h)}_i = x_{i,1:t_{c,i}-h},
-\quad h \in \{1,2,3\}\text{ seconds};
-\]
+\quad h \in \{1,2,3\}\text{ seconds}
+$$
 
 4. forecast eventual structured attributes, conditional on the known fact that the corpus is crash-positive;
 5. measure how evidence sufficiency changes with horizon;
@@ -310,15 +309,14 @@ For the complete A*-level study:
 - double-annotate at least 150 pairs;
 - lock at least 100 pairs for final evaluation;
 - evaluate on an independently sourced accident dataset;
-  
 
 ### 7.3 Matched controls versus counterfactuals
 
 A pair:
 
-\[
+$$
 (X_i^+, X_i^-)
-\]
+$$
 
 should match:
 
@@ -336,7 +334,7 @@ The pair should differ around a critical action, for example:
 - corrects drift versus continues drifting;
 - stops before entering versus enters the path.
 
-Retrieved real videos are **matched observational controls**. They are not true counterfactuals because unobserved variables may differ. Use “counterfactual” only for validated simulation/intervention pairs.
+Retrieved real videos are **matched observational controls**. They are not true counterfactuals because unobserved variables may differ. Use "counterfactual" only for validated simulation/intervention pairs.
 
 ---
 
@@ -350,9 +348,9 @@ Used only to reproduce earlier work. It is not the primary validity result.
 
 No original source video, uploader/channel family, duplicate cluster, or adjacent segment may cross train/test:
 
-\[
-\mathcal{S}_{train} \cap \mathcal{S}_{test} = \varnothing.
-\]
+$$
+\mathcal{S}_{train} \cap \mathcal{S}_{test} = \varnothing
+$$
 
 ### Split C — Environment-disjoint split
 
@@ -388,7 +386,6 @@ Before external data is available:
 - stratify approximately by onset second, severity, weather, and camera-view family;
 - use five grouped folds or a locked grouped 70/15/15 split;
 - keep all prefixes from one video in the same fold.
-
 ---
 
 ## 9. Proposed architecture: EviForecaster
@@ -421,54 +418,54 @@ flowchart LR
 
 Use VideoMAE-Large as the primary backbone:
 
-\[
-z^v_t = E_v(x_{1:t}).
-\]
+$$
+z^v_t = E_v(x_{1:t})
+$$
 
 ### 9.3 Tracked-agent representation
 
-For participant \(j\) at time \(t\):
+For participant $j$ at time $t$:
 
-\[
+$$
 o_{j,t} =
-[b_{j,t}, c_j, \Delta p_{j,t}, v_{j,t}, a_{j,t}, \rho_{j,t}],
-\]
+[b_{j,t}, c_j, \Delta p_{j,t}, v_{j,t}, a_{j,t}, \rho_{j,t}]
+$$
 
 where:
 
-- \(b_{j,t}\): bounding box;
-- \(c_j\): object class;
-- \(\Delta p_{j,t}\): displacement;
-- \(v_{j,t}\): estimated velocity;
-- \(a_{j,t}\): estimated acceleration;
-- \(\rho_{j,t}\): track confidence.
+- $b_{j,t}$: bounding box;
+- $c_j$: object class;
+- $\Delta p_{j,t}$: displacement;
+- $v_{j,t}$: estimated velocity;
+- $a_{j,t}$: estimated acceleration;
+- $\rho_{j,t}$: track confidence.
 
-For participants \(j,k\):
+For participants $j,k$:
 
-\[
+$$
 e_{jk,t} =
 [d_{jk,t}, \Delta v_{jk,t}, \theta_{jk,t},
-r_{jk,t}, \operatorname{IoU}_{jk,t}],
-\]
+r_{jk,t}, \operatorname{IoU}_{jk,t}]
+$$
 
 where:
 
-- \(d_{jk,t}\): relative image-space distance;
-- \(\Delta v_{jk,t}\): relative velocity;
-- \(\theta_{jk,t}\): relative direction;
-- \(r_{jk,t}\): closing-rate proxy.
+- $d_{jk,t}$: relative image-space distance;
+- $\Delta v_{jk,t}$: relative velocity;
+- $\theta_{jk,t}$: relative direction;
+- $r_{jk,t}$: closing-rate proxy.
 
 The interaction graph encoder produces:
 
-\[
-z^g_t = E_g(G_{1:t}).
-\]
+$$
+z^g_t = E_g(G_{1:t})
+$$
 
 ### 9.4 Causal-dynamics representation
 
-\[
-z^c_t = F(z^v_t, z^g_t).
-\]
+$$
+z^c_t = F(z^v_t, z^g_t)
+$$
 
 This is called a collision-relevant representation, not a formally identified causal representation.
 
@@ -476,49 +473,49 @@ This is called a collision-relevant representation, not a formally identified ca
 
 Accident risk:
 
-\[
-p_t = \sigma(W_p z^c_t + b_p).
-\]
+$$
+p_t = \sigma(W_p z^c_t + b_p)
+$$
 
 Evidence sufficiency:
 
-\[
-q_t = \sigma(W_q z^c_t + b_q).
-\]
+$$
+q_t = \sigma(W_q z^c_t + b_q)
+$$
 
 Decision-time probability:
 
-\[
-d_t = \sigma(W_d z^c_t + b_d).
-\]
+$$
+d_t = \sigma(W_d z^c_t + b_d)
+$$
 
 Structured outcome:
 
-\[
-\hat{a}_t = g_a(z^c_t),
-\]
+$$
+\hat{a}_t = g_a(z^c_t)
+$$
 
 covering normalized fields such as vehicle count/classes, impact configuration, and coarse severity.
 
 ### 9.6 Selective stopping rule
 
-For sufficiency threshold \(\eta\) and risk threshold \(\gamma\):
+For sufficiency threshold $\eta$ and risk threshold $\gamma$:
 
-\[
+$$
 \tau_i =
 \min\{t:q_{i,t}\ge\eta
-\land \max(p_{i,t},1-p_{i,t})\ge\gamma\}.
-\]
+\land \max(p_{i,t},1-p_{i,t})\ge\gamma\}
+$$
 
 If no time satisfies the rule, the system abstains:
 
-\[
+$$
 \hat{y}_i =
 \begin{cases}
 \mathbb{1}[p_{i,\tau_i}\ge 0.5], & \tau_i\ \text{exists},\\
 \text{abstain}, & \text{otherwise}.
 \end{cases}
-\]
+$$
 
 Thresholds are selected on validation data only.
 
@@ -528,87 +525,95 @@ Thresholds are selected on validation data only.
 
 ### 10.1 Time-weighted anticipation loss
 
-\[
+$$
 \mathcal{L}_{ant}
-=-\frac{1}{N}\sum_{i=1}^{N}\sum_{t=1}^{T}
+=
+-\frac{1}{N}
+\sum_{i=1}^{N}
+\sum_{t=1}^{T}
 w_{i,t}
 \left[
 y_i\log p_{i,t}
++
 (1-y_i)\log(1-p_{i,t})
-\right].
-\]
+\right]
+$$
 
 Weights must not reward arbitrary early confidence. They are chosen relative to the annotated decision/contact times and validated through ablation.
 
 ### 10.2 Decision-time loss
 
-Let \(r_{i,t}\) be a soft target centered on annotated \(t_{d,i}\):
+Let $r_{i,t}$ be a soft target centered on annotated $t_{d,i}$:
 
-\[
-r_{i,t} =
+$$
+r_{i,t}
+=
 \exp\left(
 -\frac{(t-t_{d,i})^2}{2\sigma_d^2}
-\right).
-\]
+\right)
+$$
 
 Then:
 
-\[
+$$
 \mathcal{L}_{dec}
-=-\frac{1}{N}\sum_{i,t}
+=
+-\frac{1}{N}
+\sum_{i,t}
 \left[
 r_{i,t}\log d_{i,t}
++
 (1-r_{i,t})\log(1-d_{i,t})
-\right].
-\]
+\right]
+$$
 
 ### 10.3 Pre-evidence suppression
 
 For positive samples:
 
-\[
+$$
 \mathcal{L}_{pre}
 =
 \frac{1}{N_+}
 \sum_{i:y_i=1}
 \frac{1}{\max(1,t_{d,i}-1)}
 \sum_{t<t_{d,i}}
-\max(0,p_{i,t}-\delta)^2.
-\]
+\max(0,p_{i,t}-\delta)^2
+$$
 
-\(\delta\) is a permissible background-risk level selected using validation calibration.
+$\delta$ is a permissible background-risk level selected using validation calibration.
 
-This loss does not imply that accident probability is literally zero before \(t_d\); it discourages unjustified high confidence.
+This loss does not imply that accident probability is literally zero before $t_d$; it discourages unjustified high confidence.
 
 ### 10.4 Matched-pair ranking
 
-\[
+$$
 \mathcal{L}_{pair}
 =
 \frac{1}{N_p}\sum_{i=1}^{N_p}
 \max\left(
 0,
 m-\left[p^+_{i,t^*}-p^-_{i,t^*}\right]
-\right),
-\]
+\right)
+$$
 
-where \(t^*\) is a defined post-divergence evaluation time.
+where $t^*$ is a defined post-divergence evaluation time.
 
 ### 10.5 Pre-divergence consistency
 
-\[
+$$
 \mathcal{L}_{same}
 =
 \frac{1}{N_p}
 \sum_i
 \frac{1}{t_{d,i}-1}
 \sum_{t<t_{d,i}}
-\left(p^+_{i,t}-p^-_{i,t}\right)^2.
-\]
+\left(p^+_{i,t}-p^-_{i,t}\right)^2
+$$
 
 ### 10.6 Post-divergence separation
 
-\[
+$$
 \mathcal{L}_{div}
 =
 \frac{1}{N_p}
@@ -618,41 +623,42 @@ where \(t^*\) is a defined post-divergence evaluation time.
 \max\left(
 0,
 m_t-\left[p^+_{i,t}-p^-_{i,t}\right]
-\right).
-\]
+\right)
+$$
 
 ### 10.7 Style-invariance loss
 
-Let \(A_s\) modify compression, color, resolution, border, overlay, or noise without changing motion:
+Let $A_s$ modify compression, color, resolution, border, overlay, or noise without changing motion:
 
-\[
-X'_i=A_s(X_i).
-\]
+$$
+X'_i=A_s(X_i)
+$$
 
 Then:
 
-\[
+$$
 \mathcal{L}_{inv}
 =
 \frac{1}{N}\sum_i
 \left\|
 E_c(X_i)-E_c(X'_i)
-\right\|_2^2.
-\]
+\right\|_2^2
+$$
 
 Every augmentation must be audited to ensure it preserves traffic dynamics.
 
 ### 10.8 Source-adversarial loss
 
-For source label \(s_i\):
+For source label $s_i$:
 
-\[
+$$
 \mathcal{L}_{src}
-=-\frac{1}{N}\sum_i
-\log P(s_i\mid \operatorname{GRL}(z^c_i)).
-\]
+=
+-\frac{1}{N}\sum_i
+\log P(s_i\mid \operatorname{GRL}(z^c_i))
+$$
 
-The gradient-reversal layer reverses the encoder gradient. Therefore, \(\mathcal{L}_{src}\) is added with a positive coefficient; it is not also negated in the total loss.
+The gradient-reversal layer reverses the encoder gradient. Therefore, $\mathcal{L}_{src}$ is added with a positive coefficient; it is not also negated in the total loss.
 
 Source-adversarial training is valid only when source is not perfectly confounded with class.
 
@@ -660,29 +666,29 @@ Source-adversarial training is valid only when source is not perfectly confounde
 
 Use a Brier-style term:
 
-\[
+$$
 \mathcal{L}_{cal}
 =
-\frac{1}{NT}\sum_{i,t}(p_{i,t}-y_i)^2.
-\]
+\frac{1}{NT}\sum_{i,t}(p_{i,t}-y_i)^2
+$$
 
 Calibration should also be evaluated post hoc; training with Brier loss does not guarantee calibration under distribution shift.
 
 ### 10.10 Structured-outcome loss
 
-\[
+$$
 \mathcal{L}_{attr}
 =
 \sum_{k\in\mathcal{A}}
 \lambda_k\,
-\operatorname{CE}(\hat{a}_{i,k},a_{i,k}),
-\]
+\operatorname{CE}(\hat{a}_{i,k},a_{i,k})
+$$
 
 with masked loss for missing attributes and multi-label BCE for vehicle sets.
 
 ### 10.11 Final objective
 
-\[
+$$
 \mathcal{L}_{total}
 =
 \mathcal{L}_{ant}
@@ -694,11 +700,10 @@ with masked loss for missing attributes and multi-label BCE for vehicle sets.
 +\lambda_{inv}\mathcal{L}_{inv}
 +\lambda_{src}\mathcal{L}_{src}
 +\lambda_{cal}\mathcal{L}_{cal}
-+\lambda_{attr}\mathcal{L}_{attr}.
-\]
++\lambda_{attr}\mathcal{L}_{attr}
+$$
 
 Not all terms should be enabled initially. Each term requires a controlled ablation, and terms requiring unavailable labels remain disabled in the current-data pilot.
-
 ---
 
 ## 11. Primary model families
@@ -769,67 +774,71 @@ Rules:
 
 ### 13.1 First-frame test
 
-\[
-X_{first}=\{x_1\}.
-\]
+$$
+X_{first}=\{x_1\}
+$$
 
 High performance suggests static context or source shortcuts.
 
 ### 13.2 Background-only test
 
-For road-user mask \(M_t\):
+For road-user mask $M_t$:
 
-\[
-\tilde{x}^{BG}_t=x_t\odot(1-M_t).
-\]
+$$
+\tilde{x}^{BG}_t=x_t\odot(1-M_t)
+$$
 
 High accident performance suggests background/source information predicts labels.
 
 ### 13.3 Agent-only test
 
-\[
-\tilde{x}^{FG}_t=x_t\odot M_t.
-\]
+$$
+\tilde{x}^{FG}_t=x_t\odot M_t
+$$
 
 This tests performance after removing most scene context.
 
 ### 13.4 Shuffled frames
 
-For random permutation \(\pi\):
+For random permutation $\pi$:
 
-\[
-X_{shuffle}=
-\{x_{\pi(1)},\ldots,x_{\pi(T)}\}.
-\]
+$$
+X_{shuffle}
+=
+\{x_{\pi(1)},\ldots,x_{\pi(T)}\}
+$$
 
 ### 13.5 Reversed frames
 
-\[
-X_{reverse}=
-\{x_T,x_{T-1},\ldots,x_1\}.
-\]
+$$
+X_{reverse}
+=
+\{x_T,x_{T-1},\ldots,x_1\}
+$$
 
 ### 13.6 Repeated frame
 
-\[
+$$
 X_{repeat}^{(k)}
-=\{x_k,x_k,\ldots,x_k\}.
-\]
+=
+\{x_k,x_k,\ldots,x_k\}
+$$
 
 ### 13.7 Metadata-only test
 
 Use no semantic pixels. Features may include:
 
-\[
-m=[\text{resolution, bitrate, codec, border statistics,
-color statistics, frame-size statistics}].
-\]
+$$
+m=
+[\text{resolution, bitrate, codec, border statistics,
+color statistics, frame-size statistics}]
+$$
 
 Metadata features must be defined before looking at test performance.
 
 ### 13.8 Temporal-position control
 
-Randomly shift or crop event position where valid, preventing the model from using a fixed “crash near frame 30” prior. Transformations must preserve labels and remain inside available video context.
+Randomly shift or crop event position where valid, preventing the model from using a fixed "crash near frame 30" prior. Transformations must preserve labels and remain inside available video context.
 
 ---
 
@@ -847,89 +856,92 @@ Report:
 - Brier score;
 - negative log-likelihood.
 
-For threshold-crossing time \(\tau_i\):
+For threshold-crossing time $\tau_i$:
 
-\[
-\operatorname{TTA}_i=t_{c,i}-\tau_i.
-\]
+$$
+\operatorname{TTA}_i=t_{c,i}-\tau_i
+$$
 
 Always report TTA with recall/precision or false-alarm operating point.
 
 ### 14.2 Evidence-Conditioned Warning Time
 
-\[
+$$
 \operatorname{ECWT}_i
 =
-t_{c,i}-\max(\tau_i,t_{d,i}).
-\]
+t_{c,i}-\max(\tau_i,t_{d,i})
+$$
 
 ECWT measures warning after evidence becomes available. It must be reported with pre-evidence risk because it does not itself penalize premature threshold crossings.
 
 ### 14.3 Pre-Evidence Risk
 
-\[
+$$
 \operatorname{PER}
 =
 \frac{1}{N_+}
 \sum_{i:y_i=1}
 \frac{1}{t_{d,i}-1}
-\sum_{t<t_{d,i}}p_{i,t}.
-\]
+\sum_{t<t_{d,i}}p_{i,t}
+$$
 
 Lower is better.
 
 ### 14.4 Matched-Pair Accuracy
 
-\[
+$$
 \operatorname{MPA}
 =
-\frac{1}{N_p}\sum_{i=1}^{N_p}
-\mathbb{1}[f(X_i^+)>f(X_i^-)].
-\]
+\frac{1}{N_p}
+\sum_{i=1}^{N_p}
+\mathbb{1}[f(X_i^+)>f(X_i^-)]
+$$
 
 Call this Counterfactual Pair Accuracy only for genuine controlled interventions.
 
 ### 14.5 Pairwise Ranking Margin
 
-\[
+$$
 \operatorname{PRM}
 =
-\frac{1}{N_p}\sum_i
-\left[f(X_i^+)-f(X_i^-)\right].
-\]
+\frac{1}{N_p}
+\sum_i
+\left[f(X_i^+)-f(X_i^-)\right]
+$$
 
 ### 14.6 Temporal Dependence Gap
 
-\[
+$$
 \operatorname{TDG}
 =
 \operatorname{AP}_{ordered}
--\operatorname{AP}_{shuffled}.
-\]
+-
+\operatorname{AP}_{shuffled}
+$$
 
 Also report reversed and repeated-frame results separately.
 
 ### 14.7 First-frame and background shortcut retention
 
-\[
+$$
 \operatorname{FFS}
 =
 \frac{\operatorname{AP}_{first}}
-{\max(\epsilon,\operatorname{AP}_{full})},
-\]
+{\max(\epsilon,\operatorname{AP}_{full})}
+$$
 
-\[
+$$
 \operatorname{BSS}
 =
 \frac{\operatorname{AP}_{background}}
-{\max(\epsilon,\operatorname{AP}_{full})}.
-\]
+{\max(\epsilon,\operatorname{AP}_{full})}
+$$
 
 Lower shortcut retention is better, provided full-video AP remains strong.
 
 ### 14.8 Shortcut Reliance Index
 
-\[
+$$
 \operatorname{SRI}
 =
 \frac{
@@ -939,8 +951,8 @@ Lower shortcut retention is better, provided full-video AP remains strong.
 +\operatorname{AP}_{metadata}
 }{
 4\max(\epsilon,\operatorname{AP}_{full})
-}.
-\]
+}
+$$
 
 SRI is secondary. Every component must be shown separately.
 
@@ -967,7 +979,6 @@ For the local pilot:
 - Brier/ECE/NLL;
 - ordered-minus-shuffled paired difference;
 - all metrics by pre-impact horizon and onset bin.
-
 ---
 
 ## 15. Main hypotheses
@@ -996,10 +1007,11 @@ RiskCueBench has already reported small VLM degradation under shuffling/reversal
 
 ### H3 — Random split inflation
 
-\[
+$$
 \Delta AP_{source}
-=AP_{random}-AP_{source\text{-}disjoint}>0.
-\]
+=
+AP_{random}-AP_{source\text{-}disjoint}>0
+$$
 
 The hypothesis requires source metadata and cannot be tested with current local data alone.
 
@@ -1139,28 +1151,28 @@ Use:
 
 For:
 
-\[
+$$
 \Delta AP
-=AP_{proposed}-AP_{baseline},
-\]
+=
+AP_{proposed}-AP_{baseline}
+$$
 
 bootstrap complete videos/groups, recompute both AP values on the same resample, and report:
 
-\[
-CI_{95\%}(\Delta AP).
-\]
+$$
+CI_{95\%}(\Delta AP)
+$$
 
 Decision-point annotation agreement:
 
-\[
+$$
 \operatorname{MAE}_{ann}
 =
 \frac{1}{N}\sum_i
-\left|t^{(1)}_{d,i}-t^{(2)}_{d,i}\right|.
-\]
+\left|t^{(1)}_{d,i}-t^{(2)}_{d,i}\right|
+$$
 
-Also report Krippendorff’s \(\alpha\) and agreement within ±1/±2 frames.
-
+Also report Krippendorff's $\alpha$ and agreement within ±1/±2 frames.
 ---
 
 ## 19. Result-table templates
