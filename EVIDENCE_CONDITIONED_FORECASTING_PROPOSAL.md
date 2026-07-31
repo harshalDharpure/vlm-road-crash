@@ -2,9 +2,6 @@
 
 ## Evidence-Conditioned Selective Forecasting for Rare-Event Videos
 
-**Research proposal for a NeurIPS/CVPR-level submission**
-
-> Status: research hypothesis and execution plan. No acceptance or performance claim is made before the proposed experiments are completed.
 
 ---
 
