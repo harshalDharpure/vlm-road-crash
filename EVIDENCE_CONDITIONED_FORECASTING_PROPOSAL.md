@@ -134,42 +134,41 @@ Additional problems include:
 These results will not be used as evidence for the new hypothesis. Existing LLaVA outputs may be retained only as descriptive controls.
 
 ---
-
 ## 4. Scientific problem
 
 Let a video be:
 
-\[
-X = \{x_1, x_2, \ldots, x_T\},
-\]
+$$
+X = \{x_1, x_2, \ldots, x_T\}
+$$
 
-where \(x_t\) is the frame at time \(t\). Let:
+where $x_t$ is the frame at time $t$. Let
 
-\[
+$$
 y \in \{0,1\}
-\]
+$$
 
 denote whether the sequence culminates in an accident.
 
 A conventional anticipation model estimates:
 
-\[
-p_t = P(y=1 \mid x_{1:t}).
-\]
+$$
+p_t = P(y=1 \mid x_{1:t})
+$$
 
 We represent the observed video as:
 
-\[
-X = G(C,S,E),
-\]
+$$
+X = G(C,S,E)
+$$
 
 where:
 
-- \(C\): collision-relevant interaction dynamics;
-- \(S\): recording/source style;
-- \(E\): environment and scene context.
+- $C$: collision-relevant interaction dynamics;
+- $S$: recording/source style;
+- $E$: environment and scene context.
 
-Examples of \(C\):
+Examples of $C$:
 
 - relative trajectories;
 - lane departure;
@@ -178,7 +177,7 @@ Examples of \(C\):
 - braking or failure to brake;
 - collision geometry.
 
-Examples of \(S\):
+Examples of $S$:
 
 - YouTube versus BDD100K origin;
 - codec and compression;
@@ -187,7 +186,7 @@ Examples of \(S\):
 - camera pipeline;
 - resolution and bitrate.
 
-Examples of \(E\):
+Examples of $E$:
 
 - weather;
 - road type;
@@ -197,18 +196,17 @@ Examples of \(E\):
 
 The desired model learns:
 
-\[
-P(y \mid C),
-\]
+$$
+P(y \mid C)
+$$
 
 but empirical risk minimization may learn:
 
-\[
-P(y \mid S,E).
-\]
+$$
+P(y \mid S,E)
+$$
 
 The central benchmark-validity question is whether strong accident-anticipation scores remain strong after source, background, temporal-position, and static-frame shortcuts are controlled.
-
 ---
 
 ## 5. Decision-time formulation
