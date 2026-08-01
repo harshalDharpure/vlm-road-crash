@@ -219,11 +219,11 @@ Assume $K$ evaluated claims.
 #### Claim Evidence Precision / Recall / F1
 
 $$
-\mathrm{CEP} = \frac{\#\{\text{generated claims supported by annotated evidence}\}}{\#\{\text{generated claims}\}}
+\mathrm{CEP} = \frac{\left|\{c : c\text{ is generated and supported by annotated evidence}\}\right|}{\left|\{c : c\text{ is generated}\}\right|}
 $$
 
 $$
-\mathrm{CER} = \frac{\#\{\text{GT evidence-grounded claims recovered with evidence}\}}{\#\{\text{GT evidence-grounded claims}\}}
+\mathrm{CER} = \frac{\left|\{c : c\text{ is a GT evidence-grounded claim recovered with evidence}\}\right|}{\left|\{c : c\text{ is a GT evidence-grounded claim}\}\right|}
 $$
 
 $$
@@ -265,7 +265,7 @@ Report separately for $\mathrm{before}$, $\mathrm{enables}$, $\mathrm{contribute
 #### Unsupported Causal Claim Rate (lower is better)
 
 $$
-\mathrm{UCCR} = \frac{\#\{\text{unsupported causal claims}\}}{\#\{\text{generated causal claims}\}}
+\mathrm{UCCR} = \frac{\left|\{c : c\text{ is an unsupported causal claim}\}\right|}{\left|\{c : c\text{ is a generated causal claim}\}\right|}
 $$
 
 #### Report Consistency Score
