@@ -1,7 +1,6 @@
-# From Video to Verifiable Crash Reports: NeurIPS Research Plan
+# From Video to Verifiable Crash Reports
 
-**Status:** Active research direction (supersedes anticipation as the main task)  
-**Date:** 2026-08-01  
+
 **Related prior docs:** `PROJECT_COMPLETION_SUMMARY.md` (completed summarization), `EVIDENCE_CONDITIONED_FORECASTING_PROPOSAL.md` (anticipation — keep only as diagnostics)
 
 ---
@@ -15,7 +14,7 @@
 5. **Run evidence interventions** (remove / keep-only / remove-irrelevant frames) and measure ERS, IRS, HAG, EC-F1, UCCR, causal-graph F1.
 6. **Benchmark diverse VLMs zero-shot** (Qwen2.5/3-VL, InternVL3.5, LLaVA-Video, VideoLLaMA3, Molmo2, one larger open model, GPT video, Gemini video) plus method ablations.
 7. **Optional:** small cross-domain TEC transfer (100–200 non-crash clips); optional verifier-guided preference alignment (not BLEU LoRA).
-8. **Write the NeurIPS paper** around evidence-faithful causal crash reports, not VQA/caption/finetune novelty.
+   
 
 **Recommended title:** *From Video to Verifiable Crash Reports: Evidence-Grounded Causal Reasoning for Traffic Accidents*  
 **Alternative:** *CrashGraph: Temporal Evidence Contracts for Explainable Traffic-Accident Video Understanding*
@@ -126,9 +125,6 @@ For each work: **dataset**, **method**, **limitation**, **how CrashGraph / TECs 
 
 VLM crash captioning, accident VQA, dense description, tracking, scene graphs, severity prediction, “why did the crash happen?”, coloured boxes alone.
 
-### E. Shared limitation → our NeurIPS problem
-
-**They score whether the answer looks right. They do not force every causal claim to be temporally grounded, participant-linked, epistemically honest, and sensitive to removing its cited frames.**
 
 Our LLaVA LoRA result (BLEU↑, NLI faithfulness↓) is local evidence of this gap.
 
@@ -161,9 +157,8 @@ flowchart LR
   OurProblem --> CrashGraphVerify
 ```
 
-### G. One-line NeurIPS acceptance pitch
 
-**Follow** CrashSight/TRACE/CausalVTG/VER for structure and evaluation rigor; **solve** the shared answer-only limitation with TECs + interventions + epistemic crash reports on Crash-1500; **do not** sell another VQA/caption/finetune paper.
+
 
 ---
 
