@@ -20,6 +20,8 @@
 **Recommended title:** *From Video to Verifiable Crash Reports: Evidence-Grounded Causal Reasoning for Traffic Accidents*  
 **Alternative:** *CrashGraph: Temporal Evidence Contracts for Explainable Traffic-Accident Video Understanding*
 
+**Full mathematical formulation (GitHub-rendered):** see [README.md](README.md#mathematical-formulation) — TEC, interventions, HAG, metrics, optional losses.
+
 ---
 
 ## Verdict (what will get accepted)
@@ -167,25 +169,50 @@ flowchart LR
 
 ## Central problem formulation
 
-Given full crash video \(V=\{x_1,\ldots,x_T\}\), produce structured report:
+> Complete symbol definitions, interventions, metrics, and optional losses with GitHub `$` / `$$` math: **[README.md § Mathematical formulation](README.md#mathematical-formulation)**.
 
-\[
-R=(P,E,G,U,S)
-\]
+Given full crash video:
 
-- \(P\): participants (type, colour, camera role, impact zone)
-- \(E\): atomic events with intervals
-- \(G=(E,A)\): causal event graph with relations in `{before, overlaps, enables, contributes-to, causes, contradicts}`
-- \(U\): uncertain / unanswerable claims
-- \(S\): natural-language summary
+$$
+V = \{x_1, x_2, \ldots, x_T\}
+$$
+
+produce structured report:
+
+$$
+R = (P, E, G, U, S)
+$$
+
+- $P$: participants (type, colour, camera role, impact zone)
+- $E$: atomic events with intervals
+- $G = (E, A)$: causal event graph with relations in `{before, overlaps, enables, contributes-to, causes, contradicts}`
+- $U$: uncertain / unanswerable claims
+- $S$: natural-language summary
 
 Every atomic claim must obey a **Temporal Evidence Contract**:
 
-\[
-c_k=(s_k,\; e_k=[t_k^s,t_k^e],\; O_k,\; r_k,\; q_k)
-\]
+$$
+c_k = (s_k,\; e_k=[t_k^{s}, t_k^{e}],\; O_k,\; r_k,\; q_k)
+$$
 
-with epistemic status \(r_k\in\{\text{observed},\text{derived},\text{hypothesised},\text{undetermined}\}\).
+with epistemic status:
+
+$$
+r_k \in \{\mathrm{observed},\; \mathrm{derived},\; \mathrm{hypothesised},\; \mathrm{undetermined}\}
+$$
+
+A report is accepted only if claims satisfy their contracts (or are explicitly marked undetermined).
+
+**Key intervention / metric identities** (see README for full derivation):
+
+$$
+V_{-k} = V \setminus E_k,\quad
+\mathrm{ERS} = \frac{1}{K}\sum_k \big[q(c_k\mid V)-q(c_k\mid V_{-k})\big]
+$$
+
+$$
+\mathrm{HAG}(c) = q(c \mid V_{\mathrm{full}}) - q(c \mid V_{\mathrm{pre}})
+$$
 
 ```mermaid
 flowchart TD
@@ -212,7 +239,7 @@ flowchart TD
    - A: remove supporting frames → confidence should drop (ERS ↑)
    - B: keep only supporting frames → claim recoverable
    - C: remove irrelevant frames → confidence stable (IRS ↑)
-3. **Hindsight Attribution Gap (HAG)** — \(q(c|V_{\text{full}})-q(c|V_{\text{pre}})\) for claims annotated as visible pre-impact
+3. **Hindsight Attribution Gap (HAG)** — $q(c\mid V_{\mathrm{full}})-q(c\mid V_{\mathrm{pre}})$ for claims annotated as visible pre-impact
 4. **CrashGraph-Verify** — training-free Generate–Verify–Revise (primary method)
 5. **Crash-EC benchmark extension** of Crash-1500 with deep causal/evidence annotations
 
@@ -222,14 +249,14 @@ flowchart TD
 
 ### Pipeline
 
-1. **Phase segmentation** using `crash_start` / `crash_end` → \(V_{\text{pre}}\cup V_{\text{impact}}\cup V_{\text{post}}\)
+1. **Phase segmentation** using `crash_start` / `crash_end` → $V_{\mathrm{pre}}\cup V_{\mathrm{impact}}\cup V_{\mathrm{post}}$
 2. **Participant proposal** — detector/tracker (e.g. YOLO + ByteTrack); Molmo2 for pointing/tracking where useful
 3. **Atomic event proposal** — VLM structured JSON events with intervals
 4. **Causal edge scoring** — VLM/LLM over event pairs with temporal constraints
 5. **Claim generation** — TEC-formatted claims from frames + tracks + graph + structured fields
 6. **Contract verifier** — interval–claim alignment, participant consistency, contradictions, epistemic calibration
-7. **Revise / abstain** if support score \(<\gamma\)
-8. **Intervention audit** — build \(V_{-k}\), \(V_{+k}\), \(V_{\text{irr}}\) and re-query confidence
+7. **Revise / abstain** if support score $<\gamma$
+8. **Intervention audit** — build $V_{-k}$, $V_{+k}$, $V_{\mathrm{irr}}$ and re-query confidence
 
 ### Optional secondary (not caption LoRA)
 
