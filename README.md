@@ -2,7 +2,7 @@
 
 Evidence-grounded causal crash-video understanding for NeurIPS-oriented research.
 
-**Active plan:** [CRASHGRAPH_NEURIPS_PLAN.md](CRASHGRAPH_NEURIPS_PLAN.md)  
+**Active plan:** [CRASHGRAPH_PLAN.md](CRASHGRAPH_NEURIPS_PLAN.md)  
 **Prior summarization work:** [PROJECT_COMPLETION_SUMMARY.md](PROJECT_COMPLETION_SUMMARY.md)  
 **Superseded as main task (diagnostics only):** [EVIDENCE_CONDITIONED_FORECASTING_PROPOSAL.md](EVIDENCE_CONDITIONED_FORECASTING_PROPOSAL.md)
 
