@@ -105,7 +105,7 @@ $$
 A predicted edge score (method component) is:
 
 $$
-a_{ij} = \sigma\!\Big(\mathrm{MLP}\big[h_i,\; h_j,\; \Delta t_{ij},\; O_i,\; O_j\big]\Big)
+a_{ij} = \sigma\left(\mathrm{MLP}\left[h_i,\; h_j,\; \Delta t_{ij},\; O_i,\; O_j\right]\right)
 $$
 
 where $h_i, h_j$ are event embeddings, $\Delta t_{ij}$ is the temporal offset, $O_i, O_j$ are participant sets, and $\sigma$ is the sigmoid. **No causal edge is forced when evidence is insufficient.**
@@ -115,7 +115,7 @@ where $h_i, h_j$ are event embeddings, $\Delta t_{ij}$ is the temporal offset, $
 Every generated claim must satisfy a contract:
 
 $$
-c_k = \big(s_k,\; e_k,\; O_k,\; r_k,\; q_k\big)
+c_k = (s_k,\; e_k,\; O_k,\; r_k,\; q_k)
 $$
 
 | Symbol | Definition |
@@ -235,19 +235,19 @@ $$
 #### Evidence Removal Sensitivity (higher is better for supported claims)
 
 $$
-\mathrm{ERS} = \frac{1}{K} \sum_{k=1}^{K} \Big[ q(c_k \mid V) - q(c_k \mid V_{-k}) \Big]
+\mathrm{ERS} = \frac{1}{K} \sum_{k=1}^{K} \left[ q(c_k \mid V) - q(c_k \mid V_{-k}) \right]
 $$
 
 #### Irrelevant Removal Stability (higher is better)
 
 $$
-\mathrm{IRS} = 1 - \frac{1}{K} \sum_{k=1}^{K} \big| q(c_k \mid V) - q(c_k \mid V_{\mathrm{irr}}) \big|
+\mathrm{IRS} = 1 - \frac{1}{K} \sum_{k=1}^{K} \left| q(c_k \mid V) - q(c_k \mid V_{\mathrm{irr}}) \right|
 $$
 
 #### Temporal Evidence IoU
 
 $$
-\mathrm{TEIoU} = \frac{\big| E_{\mathrm{pred}} \cap E_{\mathrm{gt}} \big|}{\big| E_{\mathrm{pred}} \cup E_{\mathrm{gt}} \big|}
+\mathrm{TEIoU} = \frac{\left| E_{\mathrm{pred}} \cap E_{\mathrm{gt}} \right|}{\left| E_{\mathrm{pred}} \cup E_{\mathrm{gt}} \right|}
 $$
 
 (also written **TE-IoU**)
@@ -291,7 +291,7 @@ $$
 **Causal edge (binary cross-entropy)**
 
 $$
-\mathcal{L}_{\mathrm{causal}} = -\sum_{i,j} \Big[ y_{ij}\log a_{ij} + (1-y_{ij})\log(1-a_{ij}) \Big]
+\mathcal{L}_{\mathrm{causal}} = -\sum_{i,j} \left[ y_{ij}\log a_{ij} + (1-y_{ij})\log(1-a_{ij}) \right]
 $$
 
 **Report generation**
@@ -303,13 +303,13 @@ $$
 **Evidence alignment** (claim–frame relevance $s_{k,t}$)
 
 $$
-\mathcal{L}_{\mathrm{evid}} = -\sum_{k,t} \Big[ y_{k,t}\log s_{k,t} + (1-y_{k,t})\log(1-s_{k,t}) \Big]
+\mathcal{L}_{\mathrm{evid}} = -\sum_{k,t} \left[ y_{k,t}\log s_{k,t} + (1-y_{k,t})\log(1-s_{k,t}) \right]
 $$
 
 **Intervention hinge** (enforce confidence drop under $V_{-k}$)
 
 $$
-\mathcal{L}_{\mathrm{int}} = \sum_{k} \max\!\Big(0,\; m - q(c_k \mid V) + q(c_k \mid V_{-k})\Big)
+\mathcal{L}_{\mathrm{int}} = \sum_{k} \max\left(0,\; m - q(c_k \mid V) + q(c_k \mid V_{-k})\right)
 $$
 
 **Consistency** over incompatible claim pairs $\mathcal{C}$
@@ -337,7 +337,7 @@ $$
 Participant track for agent $i$:
 
 $$
-\tau_i = \big\{ b_{i,t},\; c_i,\; \Delta x_{i,t},\; \Delta y_{i,t} \big\}_{t=1}^{T}
+\tau_i = \left\{ b_{i,t},\; c_i,\; \Delta x_{i,t},\; \Delta y_{i,t} \right\}_{t=1}^{T}
 $$
 
 where $b_{i,t}$ is the box, $c_i$ appearance/class, and $(\Delta x_{i,t}, \Delta y_{i,t})$ motion.
