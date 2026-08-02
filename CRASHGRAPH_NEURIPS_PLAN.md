@@ -1,8 +1,4 @@
-# From Video to Verifiable Crash Reports: NeurIPS Research Plan
-
-**Status:** Active research direction (supersedes anticipation as the main task)  
-**Date:** 2026-08-02 (updated after collaborator overview feedback)  
-**Related prior docs:** `PROJECT_COMPLETION_SUMMARY.md` (completed summarization), `EVIDENCE_CONDITIONED_FORECASTING_PROPOSAL.md` (anticipation — keep only as diagnostics)
+# From Video to Verifiable Crash Reports: Research Plan
 
 ---
 
@@ -23,7 +19,6 @@ Everything else (participants, events, TECs, interventions) is **how we generate
 | Evidence contracts / interventions | Make summaries **verifiable** | No — evaluation + constraint on the same text |
 | Causal event graph | Structured intermediate for better / checkable summaries | Optional scaffold for generation |
 
-**NeurIPS / Q1 A\* rule:** “Fine-tune Qwen on crash captions; BLEU↑” will **not** clear NeurIPS (crowded; our LoRA already shows BLEU↑ can hurt faithfulness). “Video-to-text for crashes, with claim-level evidence verification” can clear NeurIPS **and** a top journal.
 
 ---
 
@@ -36,7 +31,7 @@ Everything else (participants, events, TECs, interventions) is **how we generate
 3. Implement a clean GitHub pipeline: video → Video LLM → summary text (+ optional structured fields).
 4. Report standard caption metrics **and** NLI/factual checks (reuse existing eval).
 
-### Phase B — NeurIPS wedge on the *same* video-to-text output
+### Phase B — wedge on the *same* video-to-text output
 
 5. Decompose summaries into claims with **Temporal Evidence Contracts** (interval + participants + epistemic status).
 6. **CrashGraph-Verify**: generate → verify against cited frames → revise/abstain (training-free first).
@@ -81,7 +76,7 @@ Everything else (participants, events, TECs, interventions) is **how we generate
 - **Models:** Qwen2.5-VL / Qwen3-VL, VideoLLaMA3, LLaVA-Video, InternVL3.5, Molmo2, GPT/Gemini video APIs.
 - **Limitation:** Still hallucinate objects, actions, temporal order (VidHalluc, EventHallusion, ARGUS, VideoHallucer). Models can pass QA checks yet fail free-form generation (ARGUS). BLEU rewards fluency, not evidence use — our LLaVA LoRA (BLEU↑, NLI↓).
 
-### Method 4 — Evidence-constrained generation (emerging direction; our NeurIPS wedge)
+### Method 4 — Evidence-constrained generation (emerging direction; our wedge)
 
 - **Idea:** Keep Method 3 backbone; add verify–revise / grounding so summary claims stay video-supported.
 - **Related:** GRAVITI, DINO-HEAL, VER, CausalVTG, TRACE.
@@ -103,21 +98,18 @@ flowchart LR
 
 ## Verdict (what will get accepted)
 
-### Will NOT get NeurIPS / top A* alone
+
 
 - Method 1 or 2 as the main story
 - “We fine-tuned Llama/Qwen Video LLM on crash captions; BLEU improved”
 - Accident VQA / anticipation as the headline
 - Stacking unrelated modules without one evaluation story
 
-### WILL get NeurIPS + strong Q1 journal shot
 
-**One-sentence contribution:**
 
-> We study **crash video-to-text summarization** with modern Video LLMs, and introduce **temporal evidence contracts** so each sentence in the summary is tied to video intervals, participants, and an epistemic status — then we **intervene on cited frames** to test whether the model actually used that evidence.
 
-- **NeurIPS:** general video-language faithfulness / evaluation protocol (crashes = high-stakes domain).
-- **Q1 journal:** thorough Video LLM baselines + annotation quality + human eval + error taxonomy.
+
+
 
 **Feasibility:** If you can fine-tune Llama/Qwen, you can run Video LLMs. Prefer **zero-shot + training-free verify–revise** first; optional preference alignment later. Avoid caption-BLEU LoRA as the hero.
 
@@ -127,8 +119,8 @@ flowchart LR
 
 | Venue | Emphasize | De-emphasize |
 |-------|-----------|--------------|
-| **NeurIPS** | TEC, interventions, HAG, UCCR, faithfulness vs n-gram, transfer | Domain-only engineering |
-| **Q1 A* journal** | Full Video LLM comparison, human eval, error taxonomy, compute | Claiming “first crash captioner” |
+| | TEC, interventions, HAG, UCCR, faithfulness vs n-gram, transfer | Domain-only engineering |
+| | Full Video LLM comparison, human eval, error taxonomy, compute | Claiming “first crash captioner” |
 
 Same experiments; different framing.
 
@@ -246,7 +238,7 @@ For each work: **dataset**, **method**, **limitation**, **how CrashGraph / TECs 
 
 VLM crash captioning, accident VQA, dense description, tracking, scene graphs, severity prediction, “why did the crash happen?”, coloured boxes alone.
 
-### E. Shared limitation → our NeurIPS problem
+### E. Shared limitation → our  problem
 
 **They score whether the answer looks right. They do not force every causal claim to be temporally grounded, participant-linked, epistemically honest, and sensitive to removing its cited frames.**
 
@@ -281,9 +273,7 @@ flowchart LR
   OurProblem --> CrashGraphVerify
 ```
 
-### G. One-line NeurIPS acceptance pitch
 
-**Follow** CrashSight/TRACE/CausalVTG/VER for structure and evaluation rigor; **solve** the shared answer-only limitation with TECs + interventions + epistemic crash reports on Crash-1500; **do not** sell another VQA/caption/finetune paper.
 
 ---
 
@@ -472,12 +462,10 @@ Target for ~500 deep videos: ~2.5–4K events, ~1.5–3K edges, ~3–5K contract
 
 ---
 
-## Why NeurIPS (contribution statement)
+
 
 Existing accident-video benchmarks primarily evaluate answer correctness or textual similarity, but they do not verify whether individual causal claims are supported by the cited temporal evidence. We introduce temporal evidence contracts, a causally annotated extension of CCD Crash-1500, evidence-intervention evaluation (including hindsight attribution), and CrashGraph-Verify, an event-graph-conditioned generate–verify–revise system. A small cross-domain transfer study shows TECs generalise beyond traffic crashes.
 
-**Mentor one-liner:**  
-*“Anticipation is a different task. We use the full crash video for verifiable explanation: participants + atomic events + causal graph + every claim tied to frames; then we remove those frames and test whether the model withdraws the claim.”*
 
 ---
 
