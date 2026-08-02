@@ -1,14 +1,27 @@
 # VLM Road Crash — CrashGraph
 
-Evidence-grounded causal crash-video understanding for NeurIPS-oriented research.
+Evidence-grounded **crash video-to-text summarization** for NeurIPS / top-journal research.
 
-**Active plan:** [CRASHGRAPH_PLAN.md](CRASHGRAPH_NEURIPS_PLAN.md)  
+**One primary problem:** crash video → faithful text explanation (not anticipation; not a pile of unrelated tasks).
+
+**Active plan:** [CRASHGRAPH_NEURIPS_PLAN.md](CRASHGRAPH_NEURIPS_PLAN.md)  
 **Prior summarization work:** [PROJECT_COMPLETION_SUMMARY.md](PROJECT_COMPLETION_SUMMARY.md)  
 **Superseded as main task (diagnostics only):** [EVIDENCE_CONDITIONED_FORECASTING_PROPOSAL.md](EVIDENCE_CONDITIONED_FORECASTING_PROPOSAL.md)
 
 ## Task in one sentence
 
-Given a **complete** crash video, produce a structured report where every claim is temporally grounded, participant-linked, epistemically labeled, and withdrawn when its supporting frames are removed.
+Given a **complete** crash video, produce a textual summary / explanation where every claim is temporally grounded, participant-linked, epistemically labeled, and withdrawn when its supporting frames are removed.
+
+## Generation backbone (video → text)
+
+| Method | Idea | Role in our paper |
+|--------|------|-------------------|
+| 1. Per-frame caption + merge | Independent captions then post-process | Weak baseline only |
+| 2. Sequential / recurrent context | Condition frame $t$ on past summary | Optional ablation |
+| 3. **Native Video LLM** | Sample frames → temporal encoding (MRoPE / timestamps) → LLM text | **Primary backbone** |
+| 4. Evidence-constrained decode | Verify–revise claims against cited intervals | **NeurIPS contribution** |
+
+Primary open models: Qwen2.5-VL / Qwen3-VL, VideoLLaMA3, LLaVA-Video, InternVL3.5, Molmo2 (+ GPT/Gemini APIs).
 
 ---
 
